@@ -119,6 +119,8 @@ func (a *App) phonePackageInstalled(manager PackageManager, name string) bool {
 		switch manager {
 		case DNF:
 			result = a.probe("rpm", "-q", "--whatprovides", "--quiet", packageName)
+		case APT:
+			result = a.probe("dpkg-query", "-W", "-f=${db:Status-Abbrev}", packageName)
 		case XBPS:
 			result = a.probe("xbps-query", "-e", packageName)
 		default:
@@ -339,6 +341,8 @@ func (a *App) phoneNativePackages(manager PackageManager, packages []string) ([]
 	var err error
 	if manager == DNF {
 		table, err = a.fedoraTable()
+	} else if manager == APT {
+		table, err = a.debianTable()
 	} else {
 		table, err = a.xbpsTable()
 	}
@@ -356,6 +360,8 @@ func phoneInstallCommand(manager PackageManager, dnf string, packages []string) 
 	switch manager {
 	case DNF:
 		return append([]string{dnf, "install", "-y", "--setopt=install_weak_deps=False"}, packages...)
+	case APT:
+		return append([]string{"apt-get", "install", "-y", "--no-install-recommends"}, packages...)
 	case XBPS:
 		return append([]string{"xbps-install", "-Sy"}, packages...)
 	default:
@@ -367,6 +373,8 @@ func phoneRemoveCommand(manager PackageManager, dnf string, packages []string) [
 	switch manager {
 	case DNF:
 		return append([]string{dnf, "remove", "-y", "--setopt=clean_requirements_on_remove=False"}, packages...)
+	case APT:
+		return append([]string{"apt-get", "remove", "-y"}, packages...)
 	case XBPS:
 		return append([]string{"xbps-remove", "-y"}, packages...)
 	default:

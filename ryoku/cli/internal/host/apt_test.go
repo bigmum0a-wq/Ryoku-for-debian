@@ -253,3 +253,48 @@ func TestDebianTranslationsFileParsesCleanly(t *testing.T) {
 		t.Fatalf("translations[\"fd\"] = %+v, want fd-find", fd)
 	}
 }
+
+func TestAPTPackageStatus(t *testing.T) {
+	table := debianPackageFixture(t)
+	runner := &fakeRunner{
+		paths: map[string]bool{"apt-get": true, "dpkg-query": true, "apt-cache": true},
+		answer: func(command Command) Result {
+			line := argv(command)
+			if line == "dpkg-query -W -f=${Package}\n" {
+				return Result{Output: "fd-find\n"}
+			}
+			if strings.HasPrefix(line, "dpkg-query -W -f=${Status} fd-find") {
+				return Result{Output: "install ok installed\n"}
+			}
+			if strings.HasPrefix(line, "dpkg-query -W -f=${Status} gh") {
+				return Result{Code: 1, Output: "unknown ok not-installed\n"}
+			}
+			if strings.HasPrefix(line, "apt-cache policy gh") {
+				return Result{Output: "gh:\n  Installed: (none)\n  Candidate: 2.30.0\n"}
+			}
+			return Result{Code: 1}
+		},
+	}
+	app, stdout, _ := testApp(runner, map[string]string{
+		"RYOKU_HOST_PKGMGR":    "apt",
+		"RYOKU_HOST_PKG_TABLE": table,
+	})
+
+	if code := app.Execute([]string{"pkg", "status", "fd", "github-cli", "missing"}); code != ExitOK {
+		t.Fatalf("pkg status exit = %d, want ExitOK", code)
+	}
+
+	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("output lines = %d, want 3: %q", len(lines), stdout.String())
+	}
+	if lines[0] != "fd\tinstalled\trepo\t" {
+		t.Errorf("line 0 = %q, want fd installed", lines[0])
+	}
+	if lines[1] != "github-cli\tavailable\trepo\t" {
+		t.Errorf("line 1 = %q, want github-cli available", lines[1])
+	}
+	if lines[2] != "missing\tunavailable\t\tNot packaged for Debian." {
+		t.Errorf("line 2 = %q, want missing unavailable", lines[2])
+	}
+}

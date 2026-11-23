@@ -41,6 +41,11 @@ func (a *App) Initramfs(args []string) int {
 			return a.initramfsMissing("dracut")
 		}
 		return commandExit(a.run("dracut", "--regenerate-all", "--force"))
+	case APT:
+		if !a.cfg.Runner.LookPath("update-initramfs") {
+			return a.initramfsMissing("update-initramfs")
+		}
+		return commandExit(a.run("update-initramfs", "-u", "-k", "all"))
 	case XBPS:
 		if !a.cfg.Runner.LookPath("xbps-query") || !a.cfg.Runner.LookPath("xbps-reconfigure") {
 			return a.initramfsMissing("xbps-reconfigure")

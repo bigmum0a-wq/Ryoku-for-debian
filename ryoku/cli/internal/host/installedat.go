@@ -3,6 +3,7 @@ package host
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -41,6 +42,18 @@ func (a *App) packageInstalledAt(manager PackageManager, archName string) int {
 		if err == nil {
 			value = time.Unix(seconds, 0).Format("20060102")
 		}
+	case APT:
+		infoPath := filepath.Join("/var/lib/dpkg/info", name+".list")
+		fi, err := os.Stat(infoPath)
+		if err != nil {
+			matches, _ := filepath.Glob(filepath.Join("/var/lib/dpkg/info", name+":*.list"))
+			if len(matches) > 0 {
+				fi, err = os.Stat(matches[0])
+			}
+		}
+		if err == nil {
+			value = fi.ModTime().Format("20060102")
+		}
 	case XBPS:
 		result := a.query("xbps-query", "-p", "install-date", name)
 		if result.Code != 0 {
@@ -65,6 +78,8 @@ func (a *App) translatedPackageName(manager PackageManager, archName string) (st
 	)
 	if manager == DNF {
 		table, err = a.fedoraTable()
+	} else if manager == APT {
+		table, err = a.debianTable()
 	} else {
 		table, err = a.xbpsTable()
 	}

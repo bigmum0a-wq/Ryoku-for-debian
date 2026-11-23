@@ -19,6 +19,8 @@ func (a *App) packageStatus(manager PackageManager, names []string) int {
 		rows, ok = a.pacmanStatus(names)
 	case DNF:
 		rows, ok = a.dnfStatus(names)
+	case APT:
+		rows, ok = a.aptStatus(names)
 	default:
 		rows, ok = a.xbpsStatus(names)
 	}
@@ -220,3 +222,57 @@ func allInEither(names []string, first, second map[string]bool) bool {
 	}
 	return len(names) > 0
 }
+
+func (a *App) aptStatus(names []string) ([]packageState, bool) {
+	table, err := a.debianTable()
+	if err != nil {
+		a.failf("%v", err)
+		return nil, false
+	}
+	list := a.query("dpkg-query", "-W", "-f=${Package}\n")
+	if list.Code != 0 {
+		return nil, false
+	}
+	installed := lineSet(list.Output)
+	var pending []string
+	seen := map[string]bool{}
+	for _, name := range names {
+		mapping := translatePackage(table, name)
+		if mapping.Special != "" {
+			continue
+		}
+		for _, native := range mapping.Names {
+			if installed[native] || seen[native] {
+				continue
+			}
+			seen[native] = true
+			if a.aptPackageInstalled(native) {
+				installed[native] = true
+				continue
+			}
+			pending = append(pending, native)
+		}
+	}
+	available := map[string]bool{}
+	for _, native := range pending {
+		if a.aptPackageAvailable(native) {
+			available[native] = true
+		}
+	}
+	rows := make([]packageState, 0, len(names))
+	for _, name := range names {
+		mapping := translatePackage(table, name)
+		switch {
+		case mapping.Special != "":
+			rows = append(rows, unavailableState(name, dashReason(mapping, "Not packaged for Debian.")))
+		case allIn(mapping.Names, installed):
+			rows = append(rows, installedState(name))
+		case allInEither(mapping.Names, installed, available):
+			rows = append(rows, availableState(name, "repo"))
+		default:
+			rows = append(rows, unavailableState(name, "Not in the Debian repositories."))
+		}
+	}
+	return rows, true
+}
+

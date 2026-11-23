@@ -4966,6 +4966,9 @@ func reconcileOrphans(_ bool) recResult {
 	if manager == host.DNF {
 		return result.withFix(i18n.T("review the list, then run `sudo %s autoremove` if unneeded"), host.DNFCommand())
 	}
+	if manager == host.APT {
+		return result.withFix(i18n.T("review the list, then run `sudo apt-get autoremove` if unneeded"))
+	}
 	return result.withFix(i18n.T("review `pacman -Qtd`, then `sudo pacman -Rns $(pacman -Qtdq)` if unneeded"))
 }
 
