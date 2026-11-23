@@ -183,7 +183,7 @@ func (a *App) apt(args []string) int {
 }
 
 func (a *App) aptPackageInstalled(name string) bool {
-	result := a.probe("dpkg-query", "-W", "-f=${Status}\n", name)
+	result := a.query("dpkg-query", "-W", "-f=${Status}\n", name)
 	if result.Code != 0 {
 		return false
 	}
@@ -194,7 +194,7 @@ func (a *App) aptPackageAvailable(name string) bool {
 	if a.aptPackageInstalled(name) {
 		return true
 	}
-	result := a.probe("apt-cache", "policy", name)
+	result := a.query("apt-cache", "policy", name)
 	if result.Code != 0 {
 		return false
 	}
