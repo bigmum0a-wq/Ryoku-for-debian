@@ -60,7 +60,7 @@ var debianLinux = &distro{
 	fromSource: true,
 	installCmd: []string{"apt-get", "-y", "install"},
 	removeCmd:  []string{"apt-get", "-y", "remove"},
-	updateCmd:  []string{"apt-get", "-y", "dist-upgrade"},
+	updateCmd:  []string{"apt-get", "-y", "install", "--only-upgrade"},
 	refreshCmd: []string{"apt-get", "update"},
 	queryCmd:   []string{"dpkg-query", "-W", "-f=${Status}"},
 	build: []string{

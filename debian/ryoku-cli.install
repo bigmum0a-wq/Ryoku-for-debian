@@ -1,0 +1,5 @@
+usr/bin/ryoku
+usr/bin/ryoku-host
+usr/share/ryoku/packages/debian.tsv
+usr/lib/systemd/system/ryoku-boot-guard.service
+usr/lib/tmpfiles.d/ryoku.conf

@@ -18,6 +18,7 @@ const (
 	Pacman PackageManager = "pacman"
 	XBPS   PackageManager = "xbps"
 	DNF    PackageManager = "dnf"
+	APT    PackageManager = "apt"
 )
 
 func (a *App) Init() (InitSystem, error) {
@@ -39,7 +40,7 @@ func (a *App) Init() (InitSystem, error) {
 func (a *App) PackageManager() (PackageManager, error) {
 	if override := a.getenv("RYOKU_HOST_PKGMGR"); override != "" {
 		switch PackageManager(override) {
-		case Pacman, XBPS, DNF:
+		case Pacman, XBPS, DNF, APT:
 			return PackageManager(override), nil
 		default:
 			return "", fmt.Errorf("invalid RYOKU_HOST_PKGMGR %q", override)
@@ -53,6 +54,9 @@ func (a *App) PackageManager() (PackageManager, error) {
 	}
 	if a.cfg.Runner.LookPath("rpm") && (a.cfg.Runner.LookPath("dnf5") || a.cfg.Runner.LookPath("dnf")) {
 		return DNF, nil
+	}
+	if a.cfg.Runner.LookPath("apt-get") && a.cfg.Runner.LookPath("dpkg-query") {
+		return APT, nil
 	}
 	return "", fmt.Errorf("no supported package manager found")
 }

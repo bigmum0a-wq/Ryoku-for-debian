@@ -25,6 +25,13 @@ func (a *App) InstallAdvice(names ...string) string {
 		}
 		return translatedInstallAdvice("sudo "+a.dnfCommand()+" install", table, names)
 	}
+	if manager == APT {
+		table, err := a.debianTable()
+		if err != nil {
+			return unavailableAdvice(names)
+		}
+		return translatedInstallAdvice("sudo apt-get install", table, names)
+	}
 	table, err := a.xbpsTable()
 	if err != nil {
 		return unavailableAdvice(names)

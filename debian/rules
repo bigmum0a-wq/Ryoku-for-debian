@@ -1,0 +1,26 @@
+#!/usr/bin/make -f
+export DH_VERBOSE = 1
+export RYOKU_SRC = $(CURDIR)
+export RYOKU_BUILD_DIR = $(CURDIR)/debian/build
+export RYOKU_PKGVER = 1.1.0
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	mkdir -p $(RYOKU_BUILD_DIR)
+	./release/packages/ryoku/payload.sh build
+	./release/packages/ryoku-shell/payload.sh build
+	./release/packages/ryoku-palette-bridge/payload.sh build
+
+override_dh_auto_install:
+	./release/packages/ryoku/payload.sh install $(CURDIR)/debian/tmp systemd
+	./release/packages/ryoku-shell/payload.sh install $(CURDIR)/debian/tmp systemd
+	./release/packages/ryoku-desktop/payload.sh install $(CURDIR)/debian/tmp systemd
+	./release/packages/ryoku-palette-bridge/payload.sh install $(CURDIR)/debian/tmp systemd
+	install -Dm644 debian/packages/translations.tsv \
+		$(CURDIR)/debian/tmp/usr/share/ryoku/packages/debian.tsv
+
+override_dh_clean:
+	dh_clean
+	rm -rf $(RYOKU_BUILD_DIR)

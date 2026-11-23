@@ -23,6 +23,11 @@ func TestCapabilitiesJSONForSupportedHosts(t *testing.T) {
 			env:  map[string]string{"RYOKU_HOST_PKGMGR": "dnf", "RYOKU_HOST_INIT": "systemd"},
 			want: "{\"packageManager\":\"dnf\",\"init\":\"systemd\",\"packageTable\":\"/usr/share/ryoku/packages/fedora.tsv\",\"snapshots\":{\"supported\":true,\"reason\":\"\"},\"aur\":{\"supported\":false,\"reason\":\"The AUR is an Arch Linux service; Fedora installs come from DNF.\"},\"users\":{\"supported\":true,\"reason\":\"\",\"permissions\":[{\"id\":\"admin\",\"label\":\"Administrator\",\"groups\":[\"wheel\"]},{\"id\":\"devices\",\"label\":\"Devices\",\"groups\":[\"input\"]},{\"id\":\"virtualization\",\"label\":\"Virtualization\",\"groups\":[\"kvm\"]},{\"id\":\"containers\",\"label\":\"Containers\",\"groups\":[\"docker\"]}],\"storage\":{\"subvolumes\":false,\"quota\":false,\"reason\":\"Btrfs tools are not installed.\"}}}\n",
 		},
+		{
+			name: "apt-systemd",
+			env:  map[string]string{"RYOKU_HOST_PKGMGR": "apt", "RYOKU_HOST_INIT": "systemd"},
+			want: "{\"packageManager\":\"apt\",\"init\":\"systemd\",\"packageTable\":\"/usr/share/ryoku/packages/debian.tsv\",\"snapshots\":{\"supported\":true,\"reason\":\"\"},\"aur\":{\"supported\":false,\"reason\":\"The AUR is an Arch Linux service; Debian installs come from APT.\"},\"users\":{\"supported\":true,\"reason\":\"\",\"permissions\":[{\"id\":\"admin\",\"label\":\"Administrator\",\"groups\":[\"wheel\"]},{\"id\":\"devices\",\"label\":\"Devices\",\"groups\":[\"input\"]},{\"id\":\"virtualization\",\"label\":\"Virtualization\",\"groups\":[\"kvm\"]},{\"id\":\"containers\",\"label\":\"Containers\",\"groups\":[\"docker\"]}],\"storage\":{\"subvolumes\":false,\"quota\":false,\"reason\":\"Btrfs tools are not installed.\"}}}\n",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

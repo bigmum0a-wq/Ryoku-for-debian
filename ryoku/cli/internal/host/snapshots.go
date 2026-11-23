@@ -18,7 +18,7 @@ const (
 // a snapshot taken or a config changed there would be gone at the next boot.
 func (a *App) Snapshots() (supported bool, reason string) {
 	manager, err := a.PackageManager()
-	if err != nil || (manager != Pacman && manager != XBPS && manager != DNF) {
+	if err != nil || (manager != Pacman && manager != XBPS && manager != DNF && manager != APT) {
 		return false, i18n.T(snapshotsUnavailableReason)
 	}
 	if snap := a.SnapshotPreview(); snap != "" {

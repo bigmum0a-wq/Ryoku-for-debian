@@ -1,0 +1,5 @@
+commit: 0bf1174
+tag: v1.1.0
+codename: Amaterasu
+date: 2026-11-23T20:14:39Z
+target: Debian 13 Trixie (primary), Debian 12 Bookworm (secondary)

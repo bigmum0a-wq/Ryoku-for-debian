@@ -122,6 +122,9 @@ func reconcileBootSpace(checkOnly bool) recResult {
 	if dnfHost() {
 		return okRes(i18n.T("Fedora uses GRUB; Ryoku's boot-image headroom check does not apply"))
 	}
+	if aptHost() {
+		return okRes(i18n.T("Debian uses GRUB or systemd-boot; Ryoku's boot-image headroom check does not apply"))
+	}
 	if !limineManagedBoot() {
 		return unmanagedBootResult()
 	}

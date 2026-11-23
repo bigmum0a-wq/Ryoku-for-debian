@@ -79,6 +79,9 @@ func reconcileInitramfsGPUTrim(checkOnly bool) recResult {
 	if dnfHost() {
 		return okRes(i18n.T("Fedora uses dracut; this image-trim check does not apply"))
 	}
+	if aptHost() {
+		return okRes(i18n.T("Debian uses initramfs-tools; this mkinitcpio check does not apply"))
+	}
 	if xbpsHost() {
 		return okRes(i18n.T("Void boots a kernel plus a dracut initramfs image; the mkinitcpio GPU-trim check does not apply"))
 	}
@@ -158,6 +161,9 @@ func withConsoleKeys(conf string) (string, bool) {
 func reconcileInitramfsConsoleKeys(checkOnly bool) recResult {
 	if dnfHost() {
 		return okRes(i18n.T("Fedora uses dracut; this console-key image check does not apply"))
+	}
+	if aptHost() {
+		return okRes(i18n.T("Debian uses initramfs-tools; this mkinitcpio check does not apply"))
 	}
 	if xbpsHost() {
 		return okRes(i18n.T("Void boots a kernel plus a dracut initramfs image; the mkinitcpio console-key check does not apply"))

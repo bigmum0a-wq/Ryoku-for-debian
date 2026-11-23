@@ -1,0 +1,48 @@
+Source: ryoku
+Section: x11
+Priority: optional
+Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
+Build-Depends: debhelper-compat (= 13),
+               golang-go,
+               cmake,
+               ninja-build,
+               pkgconf,
+               qt6-base-dev,
+               qt6-declarative-dev,
+               qt6-shadertools-dev,
+               qt6-wayland-dev,
+               libglib2.0-dev
+Standards-Version: 4.7.0
+Homepage: https://ryoku.dev
+
+Package: ryoku-cli
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, apt, dpkg
+Description: Ryoku Desktop Control Plane and Host Abstraction
+ Provides the ryoku CLI command for desktop management, doctor diagnostics,
+ and ryoku-host abstraction daemon interfacing with APT and systemd.
+
+Package: ryoku-shell
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, quickshell
+Description: Ryoku Desktop Shell IPC and supervision daemon
+ Provides the ryoku-shell Go IPC daemon, live wallpaper engine, and shell scripts.
+
+Package: ryoku-palette-bridge
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Ryoku Palette Bridge for dynamic wallpaper-derived color sync
+ Interfaces between Matugen color extraction and applications.
+
+Package: ryoku-desktop
+Architecture: all
+Depends: ${misc:Depends},
+         ryoku-cli (>= ${source:Version}),
+         ryoku-shell (>= ${source:Version}),
+         ryoku-palette-bridge (>= ${source:Version}),
+         quickshell,
+         hyprland | niri,
+         wireplumber,
+         pipewire
+Description: Ryoku Desktop Environment (metapackage)
+ Complete cohesive tiling desktop environment configured out-of-the-box.

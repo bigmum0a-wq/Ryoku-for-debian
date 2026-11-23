@@ -38,6 +38,8 @@ func (a *App) Capabilities() int {
 			aurReason = i18n.T("The AUR is an Arch Linux service; Void installs come from XBPS.")
 		case DNF:
 			aurReason = i18n.T("The AUR is an Arch Linux service; Fedora installs come from DNF.")
+		case APT:
+			aurReason = i18n.T("The AUR is an Arch Linux service; Debian installs come from APT.")
 		}
 	}
 	value := hostCapabilities{
@@ -49,6 +51,8 @@ func (a *App) Capabilities() int {
 	}
 	if manager == DNF {
 		value.PackageTable = a.fedoraTablePath()
+	} else if manager == APT {
+		value.PackageTable = a.debianTablePath()
 	}
 	if err := json.NewEncoder(a.cfg.Stdout).Encode(value); err != nil {
 		return a.failf(i18n.T("encode capabilities: %v"), err)

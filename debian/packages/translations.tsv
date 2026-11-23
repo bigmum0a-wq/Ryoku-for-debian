@@ -1,0 +1,312 @@
+arch	debian	lanes	notes
+adw-gtk-theme	adw-gtk3-theme	desktop	
+adwaita-icon-theme	adwaita-icon-theme	desktop	
+alsa-lib	libasound2t64	desktop	
+alsa-utils	alsa-utils	desktop	
+amd-ucode	amd64-microcode	hardware:amd	
+android-tools	android-sdk-platform-tools	optional	
+apple_cursor	apple_cursor	extra	Ryoku-owned Debian package.
+asusctl	asusctl	optional	Ryoku-owned Debian package.
+avahi	avahi-daemon avahi-utils	optional	
+base	-	system	Fedora has no Arch base metapackage; the existing host supplies the base system.
+base-devel	build-essential cmake ninja-build pkgconf git	system	
+bash	bash	desktop	
+bash-completion	bash-completion	desktop	
+bat	bat	desktop	
+blesh	blesh	desktop	Ryoku-owned Debian package.
+bluez	bluez	desktop	
+bluez-utils	bluez	desktop	
+brightnessctl	brightnessctl	desktop	
+broadcom-bt-firmware	broadcom-bt-firmware	desktop	Ryoku-owned Debian package.
+btop	btop	desktop	
+btrfs-progs	btrfs-progs	system	
+calf	calf-plugins	desktop	Python equalizer LV2 effects.
+catppuccin-cursors-mocha	catppuccin-cursors-mocha	extra	Ryoku-owned Debian package.
+cava	cava	desktop	
+chromium	chromium	desktop	
+cmake	cmake	optional	
+cryptsetup	cryptsetup	system	
+curl	curl	desktop	
+dav1d	dav1d	desktop	
+dbus	dbus	optional	
+ddcutil	ddcutil	desktop	
+desktop-file-utils	desktop-file-utils	desktop	
+dkms	dkms	desktop	
+docker	docker	desktop	
+dolphin	dolphin	optional	
+dosfstools	dosfstools	system	
+dualsensectl	dualsensectl	optional	Ryoku-owned Debian package.
+easyeffects	easyeffects	desktop	Python equalizer backend.
+edk2-ovmf	ovmf	desktop	
+efibootmgr	efibootmgr	system	
+eza	eza	desktop	
+fastfetch	fastfetch	desktop	
+fd	fd-find	desktop	
+ffmpeg	ffmpeg	desktop	
+firefox	firefox-esr	desktop	
+fish	fish	desktop	
+flatpak	flatpak	desktop	
+freerdp	freerdp	optional	
+freetype2	freetype2	desktop	
+fuzzel	fuzzel	desktop	
+fzf	fzf	desktop	
+game-devices-udev	game-devices-udev	desktop	Ryoku-owned Debian package.
+gamemode	gamemode	desktop	
+gamescope	gamescope	desktop	
+gcc	gcc	desktop	
+gcc-libs	gcc-libs	desktop	
+git	git	desktop	
+github-cli	gh	desktop	
+glibc	libc6	desktop	
+gnome-keyring	gnome-keyring	desktop	
+gnome-themes-extra	gnome-themes-extra	desktop	
+go	go	dev	
+gpk	gpk	desktop	Ryoku-owned Debian package.
+gpu-screen-recorder	gpu-screen-recorder	desktop	Ryoku-owned Debian package.
+grim	grim	desktop	
+gst-libav	gstreamer1.0-libav	desktop	
+gst-plugins-bad	gstreamer1.0-plugins-bad	desktop	
+gst-plugins-base	gstreamer1.0-plugins-base	desktop	
+gst-plugins-good	gstreamer1.0-plugins-good	desktop	
+gst-plugins-ugly	gstreamer1.0-plugins-ugly	desktop	
+gtk3	gtk3	desktop	
+gtk4	gtk4	hyprland	
+gtk4-layer-shell	gtk4-layer-shell	hyprland	
+gum	gum	desktop	
+hidapi	hidapi	optional	
+hypr-dynamic-cursors	hypr-dynamic-cursors	hyprland	Ryoku-owned Debian package.
+hyprglass	hyprglass	hyprland	Ryoku-owned Debian package.
+hyprgrass	hyprgrass	hyprland	Ryoku-owned Debian package.
+hypridle	hypridle	desktop	Provided by a restricted COPR.
+hyprland	hyprland	hyprland	Provided by a restricted COPR.
+hyprland-preview-share-picker	hyprland-preview-share-picker	hyprland	Ryoku-owned Debian package.
+hyprlang	hyprlang	hyprland	Provided by a restricted COPR.
+hyprpicker	hyprpicker	desktop	Provided by a restricted COPR.
+hyprpolkitagent	hyprpolkitagent	hyprland	Provided by a restricted COPR.
+hyprsunset	hyprsunset	hyprland	Provided by a restricted COPR.
+hyprtoolkit	hyprtoolkit	hyprland	Provided by a restricted COPR.
+hyprutils	hyprutils	hyprland	Provided by a restricted COPR.
+imagemagick	imagemagick	desktop	
+imgborders	imgborders	hyprland	Ryoku-owned Debian package.
+inetutils	inetutils	optional	
+inotify-tools	inotify-tools	desktop	
+intel-media-driver	intel-media-driver	hardware:intel	
+intel-ucode	intel-microcode	hardware:intel	
+inter-font	fonts-inter	desktop	
+iw	iw	desktop	
+iwd	iwd	desktop	
+jq	jq	desktop	
+kdeconnect	kdeconnect	optional	
+kdialog	kdialog	optional	
+khal	khal	desktop	
+kitty	kitty	desktop	
+lazygit	lazygit	desktop	Provided by a restricted COPR.
+lib32-gcc-libs	lib32-gcc-libs	desktop	repo=multilib
+lib32-libdrm	lib32-libdrm	desktop	repo=multilib
+lib32-libglvnd	lib32-libglvnd	desktop	repo=multilib
+lib32-libva	lib32-libva	desktop	repo=multilib
+lib32-mesa	lib32-mesa	optional	
+lib32-nvidia-utils	lib32-nvidia-utils	hardware:nvidia	Fedora NVIDIA drivers require RPM Fusion and hardware-specific selection.
+lib32-vulkan-icd-loader	lib32-vulkan-icd-loader	optional	
+lib32-vulkan-intel	lib32-vulkan-intel	hardware:intel	
+lib32-vulkan-nouveau	lib32-vulkan-nouveau	optional	
+lib32-vulkan-radeon	lib32-vulkan-radeon	hardware:amd	
+lib32-vulkan-swrast	lib32-vulkan-swrast	hardware:vm	
+libcanberra	libcanberra	optional	
+libdrm	libdrm2	desktop	
+libgcc	libgcc	desktop	
+libglvnd	libglvnd	desktop	
+libisoburn	libisoburn	optional	
+libnotify	libnotify-bin	desktop	
+libpulse	libpulse0	desktop	
+libqalculate	libqalculate	desktop	
+librsvg	librsvg	desktop	
+libstdc++	libstdc++	hyprland	
+libusb	libusb	optional	
+libva	libva2	desktop	
+libvirt	libvirt	optional	
+libxcb	libxcb	desktop	
+libxkbcommon	libxkbcommon0	desktop	
+libyuv	libyuv	desktop	
+limine	-	system	Fedora boots Ryoku through GRUB, not Limine.
+limine-mkinitcpio-hook	-	system	Fedora uses GRUB and dracut, not mkinitcpio hooks.
+limine-snapper-sync	-	system	Fedora snapshots are not supported in this release.
+linux	linux-image-amd64	system	
+linux-firmware	firmware-linux-free	system	
+linux-headers	linux-headers-amd64	desktop	
+localsend-bin	localsend	extra	Ryoku-owned Debian package.
+looking-glass	looking-glass	optional	No Fedora package provides this Arch package.
+lsp-plugins-lv2	lsp-plugins-lv2	desktop	Python equalizer and compressor plugins.
+lua	lua5.4	optional	
+make	make	optional	
+mangohud	mangohud	desktop	
+matugen	ryoku-matugen	desktop	Bundled by the Ryoku extras RPM.
+mesa	mesa-va-drivers mesa-vulkan-drivers	desktop	
+mise	mise	dev	Ryoku-owned Debian package.
+mkinitcpio	-	system	Not packaged for Debian; skipped.
+mpv	mpv	optional	
+mpv-mpris	mpv-mpris	optional	
+nautilus	nautilus	desktop	
+nautilus-python	nautilus-python	desktop	
+neovim	neovim	desktop	
+networkmanager	network-manager	desktop	Arch networkmanager includes the wifi plugin.
+nftables	nftables	desktop	
+niri	niri	desktop	
+nodejs	nodejs	desktop,dev	
+noto-fonts	fonts-noto-core	desktop	
+noto-fonts-cjk	fonts-noto-cjk	desktop	
+noto-fonts-emoji	fonts-noto-color-emoji	desktop	
+npm	npm	dev	
+nvibrant-bin	nvibrant	extra	Ryoku-owned Debian package.
+nvidia-utils	nvidia-utils	hardware:nvidia	Fedora NVIDIA drivers require RPM Fusion and hardware-specific selection.
+openrgb	openrgb	desktop	
+otf-space-grotesk	fonts-space-grotesk	desktop	Bundled by the Ryoku extras RPM.
+pacman	-	desktop	Pacman is not used on Fedora.
+pacman-contrib	pacman-contrib	desktop	Pacman-only tooling is not used on Fedora.
+pam-fprint-grosshack	pam-fprint-grosshack	extra	No Fedora package provides this Arch package.
+pam-u2f	pam-u2f	desktop	
+papirus-icon-theme	papirus-icon-theme	desktop	
+pavucontrol	pavucontrol	optional	
+pciutils	pciutils	desktop	
+phinger-cursors	phinger-cursors	extra	Ryoku-owned Debian package.
+picocom	picocom	optional	
+pipewire	pipewire	desktop	
+pipewire-alsa	pipewire-alsa	desktop	
+pipewire-audio	pipewire-audio	desktop	
+pipewire-pulse	pipewire-pulse	desktop	
+plasma-integration	plasma-integration	optional	
+playerctl	playerctl	desktop	
+plymouth	plymouth	system	
+polkit	polkitd	desktop	
+power-profiles-daemon	power-profiles-daemon	desktop	
+prowl	prowl	desktop	Ryoku-owned Debian package.
+python	python3	desktop,dev	
+python-dbus	python-dbus	optional	
+python-gobject	python-gobject	optional	
+python-pillow	python-pillow	optional	
+python-pip	python3-pip	dev	
+python-pipx	python-pipx	dev	
+qemu-desktop	qemu-system-x86	desktop	
+qmk-hid	qmk-hid	optional	Bundled by the Ryoku extras RPM.
+qrencode	qrencode	desktop	
+qt5-wayland	qtwayland5	desktop	
+qt6-5compat	qml6-module-qt5compat-graphicaleffects	desktop	
+qt6-base	libqt6core6	desktop	
+qt6-declarative	qml6-module-qtquick	desktop	
+qt6-imageformats	qt6-imageformats	desktop	
+qt6-multimedia	qml6-module-qtmultimedia	desktop	
+qt6-multimedia-ffmpeg	libqt6multimedia6	desktop	
+qt6-quick3d	qt6-quick3d	desktop	
+qt6-svg	libqt6svg6	desktop	
+qt6-wayland	qt6-wayland	desktop	
+qt6ct	qt6ct	desktop	
+quickemu	quickemu	optional	
+quickshell	quickshell	desktop	Ryoku-built package.
+ripgrep	ripgrep	desktop	
+rtkit	rtkit	desktop	
+rust	rustc cargo	desktop	
+ryogami	ryogami	desktop	Ryoku-owned Debian package.
+ryoku	ryoku	desktop	Ryoku-owned Debian package.
+ryoku-blobs	ryoku-blobs	desktop	Ryoku-owned Debian package.
+ryoku-cursor-material	ryoku-cursor-material	desktop	Ryoku-owned Debian package.
+ryoku-cursors	ryoku-cursors	desktop	Ryoku-owned Debian package.
+ryoku-desktop	ryoku-desktop	desktop	Ryoku-owned Debian package.
+ryoku-desktop-compositor	ryoku-desktop-compositor	desktop	Ryoku-owned Debian package.
+ryoku-desktop-hyprland	ryoku-desktop-hyprland	hyprland	Ryoku-owned Debian package.
+ryoku-desktop-niri	ryoku-desktop-niri	desktop	Ryoku-owned Debian package.
+ryoku-desktop-wayfire	ryoku-desktop-wayfire	wayfire	Ryoku-owned Debian package.
+ryoku-hub	ryoku-hub	desktop	Ryoku-owned Debian package.
+ryoku-hypr-plugins	ryoku-hypr-plugins	hyprland	Ryoku-owned Debian package.
+ryoku-keyring	ryoku-keyring	desktop	Ryoku-owned Debian package.
+ryoku-keysounds	ryoku-keysounds	hyprland	Ryoku-owned Debian package.
+ryoku-keysounds-niri	ryoku-keysounds-niri	optional	Ryoku-owned Debian package.
+ryoku-keysounds-profiles	ryoku-keysounds-profiles	optional	Ryoku-owned Debian package.
+ryoku-oh-my-zsh	ryoku-oh-my-zsh	desktop	Ryoku-owned Debian package.
+ryoku-palette-bridge	ryoku-palette-bridge	desktop	Ryoku-owned Debian package.
+ryoku-rashin	ryoku-rashin	desktop	Ryoku-owned Debian package.
+ryoku-shell	ryoku-shell	desktop	Ryoku-owned Debian package.
+ryomanager	ryomanager	optional	Ryoku-owned Debian package.
+ryotunes	ryotunes	optional	Ryoku-owned Debian package.
+scrcpy	scrcpy	optional	Provided by a restricted COPR.
+sdbus-cpp	sdbus-cpp	hyprland	
+sddm	sddm	desktop	
+shaderc	shaderc	desktop	
+skwd-paper-bin	skwd-paper-bin	desktop	Ryoku-owned Debian package.
+slurp	slurp	desktop	
+snap-pac	-	system	DNF does not use pacman transaction hooks.
+snapper	snapper	desktop,system	
+socat	socat	desktop	
+songrec	-	desktop	Ryoku-owned RPM.
+spice-gtk	spice-gtk	optional	
+sqlite	sqlite	optional	
+starship	starship	desktop	Provided by a restricted COPR.
+steam	steam	desktop	repo=nonfree
+steamcmd	steamcmd	optional	No Fedora package provides this Arch package.
+sudo	sudo	system	
+swtpm	swtpm	optional	
+syntax-highlighting	syntax-highlighting	desktop	
+tesseract	tesseract-ocr	desktop	
+tesseract-data-eng	tesseract-ocr-eng	desktop	
+thunar	thunar	optional	
+tigervnc	tigervnc	optional	
+translate-shell	translate-shell	desktop	
+ttf-firacode-nerd	fonts-firacode	desktop	Ryoku-owned Debian package.
+ttf-fraunces-variable	ttf-fraunces-variable	extra	Ryoku-owned Debian package.
+ttf-hack-nerd	fonts-hack	desktop	Ryoku-owned Debian package.
+ttf-jetbrains-mono-nerd	fonts-jetbrains-mono	desktop	Bundled by the Ryoku extras RPM.
+ttf-maple-mono-nf	ttf-maple-mono-nf	desktop	Ryoku-owned Debian package.
+ttf-material-symbols-variable	-	desktop	Bundled by the Ryoku extras RPM.
+ttf-readex-pro	ttf-readex-pro	desktop	Ryoku-owned Debian package.
+ttf-rubik-vf	ttf-rubik-vf	desktop	
+udev	udev	desktop	
+upower	upower	desktop	
+util-linux-libs	util-linux-libs	hyprland	Fedora splits these libraries; RPM soname dependencies install the required providers.
+uv	uv	desktop	
+v4l2loopback-dkms	v4l2loopback-dkms	optional	Provided by a restricted COPR.
+vdirsyncer	vdirsyncer	desktop	
+vimix-cursors	-	desktop	Ryoku-owned RPM.
+virglrenderer	virglrenderer	desktop	
+voxtype-bin	voxtype-bin	extra	Ryoku-owned Debian package.
+vulkan-icd-loader	libvulkan1	desktop	
+vulkan-intel	vulkan-intel	hardware:intel	
+vulkan-radeon	vulkan-radeon	hardware:amd	
+vulkan-swrast	vulkan-swrast	hardware:vm	
+waifu2x-ncnn-vulkan	-	desktop	Ryoku-owned RPM.
+wayfire	wayfire	wayfire	Fedora ships Wayfire 0.10.1; Ryoku requires 0.11.
+wayland	wayland	desktop	
+webkit2gtk-4.1	webkit2gtk-4.1	desktop	
+weston	weston	desktop	
+wireless-regdb	wireless-regdb	desktop	
+wireplumber	wireplumber	desktop	
+wl-clip-persist	wl-clip-persist	desktop	Ryoku-owned Debian package.
+wl-clipboard	wl-clipboard	desktop	
+wlopm	wlopm	wayfire	Fedora ships Wayfire 0.10.1; Ryoku's Wayfire desktop requires 0.11.
+wlr-randr	wlr-randr	wayfire	Fedora ships Wayfire 0.10.1; Ryoku's Wayfire desktop requires 0.11.
+wlsunset	wlsunset	desktop	
+wpa_supplicant	wpasupplicant	desktop	
+wtype	wtype	desktop	
+xcb-util-cursor	xcb-util-cursor	desktop	
+xdg-desktop-portal	xdg-desktop-portal	hyprland	
+xdg-desktop-portal-gnome	xdg-desktop-portal-gnome	desktop	
+xdg-desktop-portal-gtk	xdg-desktop-portal-gtk	desktop	
+xdg-desktop-portal-hyprland	xdg-desktop-portal-hyprland	hyprland	Provided by a restricted COPR.
+xdg-desktop-portal-wlr	xdg-desktop-portal-wlr	wayfire	Fedora ships Wayfire 0.10.1; Ryoku's Wayfire desktop requires 0.11.
+xdg-user-dirs	xdg-user-dirs	desktop	
+xdg-utils	xdg-utils	desktop	
+xorg-xcursorgen	xorg-xcursorgen	desktop	
+xorg-xwayland	xwayland	desktop	
+xpadneo-dkms	xpadneo-dkms	desktop	Ryoku-owned Debian package.
+xwayland-satellite	xwayland-satellite	desktop	
+yay	yay	optional	AUR helpers do not apply to Fedora.
+yay-bin	yay-bin	extra	AUR helpers do not apply to Fedora.
+yazi	-	desktop	Provided by a restricted COPR.
+yt-dlp	yt-dlp	desktop	
+zbar	zbar	desktop	
+zen-browser-bin	zen-browser-bin	extra	Zen ships only as an upstream binary build; Ryoku does not mirror a browser it cannot keep current
+zenity	zenity	desktop	
+zlib	zlib	desktop	
+zoxide	zoxide	desktop	
+zsh	zsh	desktop	
+zsh-autosuggestions	zsh-autosuggestions	desktop	
+zsh-history-substring-search	zsh-history-substring-search	desktop	Ryoku-owned Debian package.
+zsh-syntax-highlighting	zsh-syntax-highlighting	desktop	

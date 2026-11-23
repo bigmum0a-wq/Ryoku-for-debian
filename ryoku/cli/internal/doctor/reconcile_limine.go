@@ -66,7 +66,7 @@ var (
 )
 
 var limineManagedBoot = func() bool {
-	if dnfHost() {
+	if dnfHost() || aptHost() {
 		return false
 	}
 	if hasPacman() {
@@ -79,6 +79,9 @@ var limineManagedBoot = func() bool {
 func unmanagedBootResult() recResult {
 	if dnfHost() {
 		return okRes(i18n.T("Fedora uses GRUB; this boot-menu check does not apply"))
+	}
+	if aptHost() {
+		return okRes(i18n.T("Debian uses GRUB or systemd-boot; this boot-menu check does not apply"))
 	}
 	return okRes(i18n.T("Ryoku's Limine tooling does not manage this boot"))
 }

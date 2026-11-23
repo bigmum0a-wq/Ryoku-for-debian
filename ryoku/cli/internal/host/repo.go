@@ -21,9 +21,11 @@ const (
 	PacmanRepoBase = "https://repo.ryoku.dev/stable"
 	XBPSRepoBase   = "https://repo.ryoku.dev/stable/void"
 	DNFRepoBase    = "https://repo.ryoku.dev/stable/fedora/$releasever"
+	APTRepoBase    = "https://repo.ryoku.dev/stable/debian"
 	ryokuRepoName  = "ryoku"
 	xbpsRepoConfig = "20-ryoku.conf"
 	dnfRepoConfig  = "/etc/yum.repos.d/ryoku.repo"
+	aptRepoConfig  = "/etc/apt/sources.list.d/ryoku.sources"
 )
 
 var ErrRepoAbsent = errors.New("no Ryoku package repository is configured")
@@ -71,6 +73,8 @@ func repoBaseFor(manager PackageManager) string {
 		return XBPSRepoBase
 	case DNF:
 		return DNFRepoBase
+	case APT:
+		return APTRepoBase
 	default:
 		return PacmanRepoBase
 	}
@@ -84,7 +88,7 @@ type RepoPackage struct {
 
 func RepoURLFor(manager PackageManager, channel string) string {
 	base, arch := repoBaseFor(manager), "$arch"
-	if manager == XBPS || manager == DNF {
+	if manager == XBPS || manager == DNF || manager == APT {
 		arch = "x86_64"
 	}
 	switch {
@@ -274,6 +278,12 @@ func (a *App) dnfRepoPath() string {
 	}
 	return dnfRepoConfig
 }
+func (a *App) aptRepoPath() string {
+	if path := a.getenv("RYOKU_APT_REPO_CONFIG"); path != "" {
+		return path
+	}
+	return aptRepoConfig
+}
 
 func (a *App) RepoURL() (string, error) {
 	manager, err := a.PackageManager()
@@ -286,6 +296,16 @@ func (a *App) RepoURL() (string, error) {
 			return "", ErrRepoAbsent
 		}
 		if value := dnfRepoURL(string(body)); value != "" {
+			return value, nil
+		}
+		return "", ErrRepoAbsent
+	}
+	if manager == APT {
+		body, err := os.ReadFile(a.aptRepoPath())
+		if err != nil {
+			return "", ErrRepoAbsent
+		}
+		if value := aptRepoURL(string(body)); value != "" {
 			return value, nil
 		}
 		return "", ErrRepoAbsent
@@ -433,6 +453,21 @@ func (a *App) RepoSetURL(url string) error {
 		}
 		return a.clearDNFRepoCache()
 	}
+	if manager == APT {
+		path := a.aptRepoPath()
+		body, err := os.ReadFile(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return ErrRepoAbsent
+			}
+			return err
+		}
+		rewritten, ok := rewriteAptRepoURL(string(body), strings.TrimSpace(url))
+		if !ok {
+			return ErrRepoAbsent
+		}
+		return replaceFile(path, rewritten, 0o644)
+	}
 	if manager == XBPS {
 		path := filepath.Join(a.xbpsConfigDir(), xbpsRepoConfig)
 		return replaceFile(path, "repository="+strings.TrimSpace(url)+"\n", 0o644)
@@ -529,6 +564,8 @@ func (a *App) RepoSync(force bool) error {
 		name, args = "xbps-install", []string{"-S"}
 	} else if manager == DNF {
 		name, args = a.dnfCommand(), []string{"makecache", "-y", "--refresh", "--repo=" + ryokuRepoName}
+	} else if manager == APT {
+		name, args = "apt-get", []string{"update"}
 	} else if force {
 		args[0] = "-Syy"
 	}
@@ -789,6 +826,15 @@ func (a *App) compareVersions(manager PackageManager, installed, available strin
 	if manager == DNF {
 		return compareRPMEVR(installed, available)
 	}
+	if manager == APT {
+		if a.query("dpkg", "--compare-versions", installed, "gt", available).Code == 0 {
+			return 1
+		}
+		if a.query("dpkg", "--compare-versions", installed, "lt", available).Code == 0 {
+			return -1
+		}
+		return 0
+	}
 	command := "vercmp"
 	if manager == XBPS {
 		command = "xbps-uhelper"
@@ -806,6 +852,35 @@ func (a *App) compareVersions(manager PackageManager, installed, available strin
 		return 0
 	}
 	return value
+}
+
+func aptRepoURL(body string) string {
+	for _, line := range strings.Split(body, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "URIs:") {
+			fields := strings.Fields(strings.TrimPrefix(trimmed, "URIs:"))
+			if len(fields) > 0 {
+				return fields[0]
+			}
+		}
+	}
+	return ""
+}
+
+func rewriteAptRepoURL(body, url string) (string, bool) {
+	lines := strings.Split(body, "\n")
+	changed := false
+	for i, raw := range lines {
+		trimmed := strings.TrimSpace(raw)
+		if strings.HasPrefix(trimmed, "URIs:") {
+			lines[i] = "URIs: " + url
+			changed = true
+		}
+	}
+	if !changed {
+		return "", false
+	}
+	return strings.Join(lines, "\n"), true
 }
 
 func commandError(name string, args []string, result Result) error {

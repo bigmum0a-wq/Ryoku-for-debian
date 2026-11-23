@@ -120,6 +120,11 @@ func dnfHost() bool {
 	return err == nil && manager == host.DNF
 }
 
+func aptHost() bool {
+	manager, err := doctorPackageManager()
+	return err == nil && manager == host.APT
+}
+
 func doctorPackageUnavailable(manager host.PackageManager, name string) bool {
 	return manager != host.Pacman && doctorPackageAvailability(name) == host.ExitNotProvided
 }
@@ -4855,7 +4860,7 @@ var boxInstalledAt = func() time.Time {
 // reported for `sudo pacdiff`. idempotent: once the safe ones are gone a
 // re-run only sees (and reports) the conflicts.
 func pendingConfigCheckName() string {
-	if dnfHost() {
+	if dnfHost() || aptHost() {
 		return i18n.T("pending package config updates")
 	}
 	return i18n.T("pending config (.pacnew)")
@@ -4865,6 +4870,14 @@ func reconcilePacnew(checkOnly bool) recResult {
 	manager, err := doctorPackageManager()
 	if err != nil {
 		return noteRes(i18n.T("could not identify the package manager; pending config updates were not checked"))
+	}
+	if manager == host.APT {
+		files := append(doctorFindPendingConfig("*.dpkg-dist"), doctorFindPendingConfig("*.dpkg-new")...)
+		if len(files) == 0 {
+			return okRes(i18n.T("no pending package config updates"))
+		}
+		return warnRes(i18n.T("%d pending dpkg config update(s) need review: %s"), len(files), strings.Join(files, ", ")).
+			withFix(i18n.T("merge each .dpkg-dist or .dpkg-new file into its base config, then remove the reviewed files"))
 	}
 	if manager == host.DNF {
 		files := append(doctorFindPendingConfig("*.rpmnew"), doctorFindPendingConfig("*.rpmsave")...)

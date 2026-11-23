@@ -42,6 +42,8 @@ func (a *App) Package(args []string) int {
 			return ExitFalse
 		case DNF:
 			return a.dnfPackageWhy(args[1])
+		case APT:
+			return a.aptPackageWhy(args[1])
 		default:
 			return a.xbpsPackageWhy(args[1])
 		}
@@ -51,6 +53,8 @@ func (a *App) Package(args []string) int {
 		return a.pacman(args)
 	case DNF:
 		return a.dnf(args)
+	case APT:
+		return a.apt(args)
 	default:
 		return a.xbps(args)
 	}
@@ -87,6 +91,9 @@ func (a *App) Orphans() ([]string, error) {
 	if manager == DNF {
 		return a.dnfOrphans()
 	}
+	if manager == APT {
+		return a.aptOrphans()
+	}
 	name, args := "pacman", []string{"-Qdtq"}
 	if manager == XBPS {
 		name, args = "xbps-query", []string{"-O"}
@@ -121,6 +128,8 @@ func (a *App) PackageOwner(path string) (string, error) {
 		name, args = "rpm", []string{"-qf", "--qf", "%{NAME}\n", path}
 	} else if manager == XBPS {
 		name, args = "xbps-query", []string{"-o", path}
+	} else if manager == APT {
+		name, args = "dpkg-query", []string{"-S", path}
 	}
 	result := a.query(name, args...)
 	if result.Code != 0 {
@@ -133,6 +142,10 @@ func (a *App) PackageOwner(path string) (string, error) {
 		}
 		if match := xbpsPackagePattern.FindStringSubmatch(value); len(match) == 3 {
 			value = match[1]
+		}
+	} else if manager == APT {
+		if owner, _, ok := strings.Cut(value, ":"); ok {
+			value = strings.TrimSpace(owner)
 		}
 	}
 	return value, nil
