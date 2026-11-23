@@ -28,6 +28,7 @@
 /ryoku/shell/ryogami/picker/build/
 /ryoku/shell/plugin/dist/
 /release/repo/out/
+/debian/packages/repo/out/
 *.iso
 __pycache__/
 *.pyc

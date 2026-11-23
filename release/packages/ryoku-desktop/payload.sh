@@ -282,9 +282,9 @@ EOF
   # It is also the one applications layer no distro package owns: shipping to
   # /usr/share/applications/mimeapps.list collided with omarchy-settings on
   # Omarchy installs and aborted the whole transaction (#295).
-  # Void packages may not own /usr/local, so there the defaults sit one layer
+  # Void and Debian packages may not own /usr/local, so there the defaults sit one layer
   # higher in the same chain, /etc/xdg, still below the user's own file.
-  if [[ $RYOKU_INIT_MODE == systemd ]]; then
+  if [[ $RYOKU_INIT_MODE == systemd && ${RYOKU_DISTRO:-} != debian ]]; then
     install -Dm644 "$_repo/ryoku/apps/mimeapps.list" \
       "$pkgdir/usr/local/share/applications/mimeapps.list"
   else
