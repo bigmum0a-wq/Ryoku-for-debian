@@ -40,7 +40,6 @@ Item {
         contentWidth: width
         contentHeight: overview.implicitHeight + (overview.implicitHeight > height ? Tokens.s2 * root.s : 0)
         boundsBehavior: Flickable.StopAtBounds
-        acceptedButtons: Qt.LeftButton
 
         Column {
             id: overview

@@ -1,4 +1,4 @@
-import QtQuick 6.11
+import QtQuick 6.0
 import qs.Commons
 
 // Labeled toggle row: title + optional description on the left, a

@@ -144,7 +144,14 @@ func probeConfig() string {
 	if _, err := exec.LookPath("qs"); err != nil {
 		return ""
 	}
-	out := runBoundedProbe(exec.Command("qs", "-c", "shell"), shellProbeWindow, func(out string) bool {
+	cmd := exec.Command("qs", "-c", "shell")
+	shellRoot := filepath.Join(sys.Xdg("XDG_CONFIG_HOME", ".config"), "quickshell")
+	qmlPaths := []string{shellRoot, "/usr/lib/x86_64-linux-gnu/qt6/qml", "/usr/lib/qt6/qml"}
+	if cur := os.Getenv("QML2_IMPORT_PATH"); cur != "" {
+		qmlPaths = append(qmlPaths, cur)
+	}
+	cmd.Env = append(os.Environ(), "QML2_IMPORT_PATH="+strings.Join(qmlPaths, string(os.PathListSeparator)))
+	out := runBoundedProbe(cmd, shellProbeWindow, func(out string) bool {
 		return strings.Contains(out, "Configuration Loaded")
 	})
 	if isLoadFailure(out) {

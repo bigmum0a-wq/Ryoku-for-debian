@@ -14,3 +14,4 @@ WaveCapture 1.0 WaveCapture.qml
 SystemMonitor 1.0 SystemMonitor.qml
 SystemGraph 1.0 SystemGraph.qml
 ThinkingOrb 1.0 ThinkingOrb.qml
+CavaSpectrumPainter 1.0 CavaSpectrumPainter.qml

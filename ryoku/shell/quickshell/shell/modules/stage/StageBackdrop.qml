@@ -88,20 +88,21 @@ Item {
                 anchors.fill: parent
                 active: root.spatial
                 visible: status === Loader.Ready
+                source: root.spatial ? "StageSpatialScene.qml" : ""
 
-                sourceComponent: Component {
-                    StageSpatialScene {
-                        backgroundPath: root.url
-                        depthPath: root.depthUrl
-                        mattePath: root.mode === "parallax"
-                            ? StageBackend.layerUrlFor(root.wallpaperPath, 0) : ""
-                        textureSize: Qt.size(root.width, root.height)
-                        stretch: root.wallpaperFit === "Fill"
-                        screenName: root.screenName
-                        layered: root.layered
-                        pointerX: root.cursorNX
-                        pointerY: root.cursorNY
-                        mode: root.mode
+                onLoaded: {
+                    if (item) {
+                        item.backgroundPath = root.url;
+                        item.depthPath = root.depthUrl;
+                        item.mattePath = root.mode === "parallax"
+                            ? StageBackend.layerUrlFor(root.wallpaperPath, 0) : "";
+                        item.textureSize = Qt.size(root.width, root.height);
+                        item.stretch = root.wallpaperFit === "Fill";
+                        item.screenName = root.screenName;
+                        item.layered = root.layered;
+                        item.pointerX = Qt.binding(() => root.cursorNX);
+                        item.pointerY = Qt.binding(() => root.cursorNY);
+                        item.mode = root.mode;
                     }
                 }
             }

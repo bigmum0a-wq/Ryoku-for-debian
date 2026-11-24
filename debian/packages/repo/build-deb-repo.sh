@@ -133,20 +133,46 @@ else
   RYOKU_PREBUILT_DIR="$PREBUILT_BLOBS" RYOKU_BUILD_DIR="$BLOBS_BUILD" "$REPO_ROOT/release/packages/ryoku-blobs/payload.sh" build
   RYOKU_PREBUILT_DIR="$PREBUILT_BLOBS" RYOKU_BUILD_DIR="$BLOBS_BUILD" "$REPO_ROOT/release/packages/ryoku-blobs/payload.sh" install "$BLOBS_DIR" systemd
 fi
+mkdir -p "$BLOBS_DIR/DEBIAN"
+cat << 'EOF' > "$BLOBS_DIR/DEBIAN/postinst"
+#!/bin/sh
+set -e
+QMLDIR="/usr/lib/x86_64-linux-gnu/qt6/qml/QtQuick/Effects/qmldir"
+if [ -f "$QMLDIR" ]; then
+  if ! grep -q "RectangularShadow" "$QMLDIR"; then
+    sed -i '/prefer :\//d' "$QMLDIR"
+    echo "RectangularShadow 6.0 RectangularShadow.qml" >> "$QMLDIR"
+  fi
+fi
+exit 0
+EOF
+chmod 755 "$BLOBS_DIR/DEBIAN/postinst"
 package_deb "ryoku-blobs" "$ARCH" "quickshell" \
   "Ryoku Blobs and Spatial3D QML components" "$BLOBS_DIR"
 
-# 6. ryoku-desktop (metapackage and shared configs)
+# 6. ryoku-desktop-hyprland
+log "Building ryoku-desktop-hyprland"
+HYPR_DIR="$WORK_DIR/hyprland"
+HYPR_BUILD="$WORK_DIR/build/hyprland"
+mkdir -p "$HYPR_DIR" "$HYPR_BUILD"
+RYOKU_BUILD_DIR="$HYPR_BUILD" "$REPO_ROOT/release/packages/ryoku-desktop-hyprland/payload.sh" build
+RYOKU_BUILD_DIR="$HYPR_BUILD" "$REPO_ROOT/release/packages/ryoku-desktop-hyprland/payload.sh" install "$HYPR_DIR" systemd
+package_deb "ryoku-desktop-hyprland" "$ARCH" "hyprland, ryoku-shell" \
+  "Ryoku Desktop Hyprland compositor integration and configuration" "$HYPR_DIR"
+
+# 7. ryoku-desktop (metapackage and shared configs)
 log "Building ryoku-desktop"
 DESKTOP_DIR="$WORK_DIR/desktop"
 DESKTOP_BUILD="$WORK_DIR/build/desktop"
 mkdir -p "$DESKTOP_DIR" "$DESKTOP_BUILD"
 RYOKU_BUILD_DIR="$DESKTOP_BUILD" "$REPO_ROOT/release/packages/ryoku-desktop/payload.sh" install "$DESKTOP_DIR" systemd
+mkdir -p "$DESKTOP_DIR/usr/lib/x86_64-linux-gnu/qt6/qml"
+ln -sfn /usr/lib/qt6/qml/Ryoku "$DESKTOP_DIR/usr/lib/x86_64-linux-gnu/qt6/qml/Ryoku"
 package_deb "ryoku-desktop" "all" \
-  "ryoku-cli (>= $PKGVER), ryoku-shell (>= $PKGVER), ryoku-palette-bridge (>= $PKGVER), ryoku-blobs (>= $PKGVER), wireplumber, pipewire" \
+  "ryoku-cli (>= $PKGVER), ryoku-shell (>= $PKGVER), ryoku-palette-bridge (>= $PKGVER), ryoku-blobs (>= $PKGVER), ryoku-desktop-hyprland (>= $PKGVER), qml6-module-qtquick3d, wireplumber, pipewire" \
   "Ryoku Desktop Environment (metapackage and system configuration)" "$DESKTOP_DIR"
 
-# 7. Index packages into repository
+# 8. Index packages into repository
 log "Indexing APT repository"
 cd "$OUT_DIR"
 dpkg-scanpackages --multiversion pool/ > "$DISTS_DIR/Packages"

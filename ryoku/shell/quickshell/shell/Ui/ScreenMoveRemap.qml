@@ -1,4 +1,4 @@
-import QtQuick 6.11
+import QtQuick 6.0
 
 // Some compositors leave an already-mapped layer surface at its old global
 // position when its output moves within the layout. Watch the screen origin and

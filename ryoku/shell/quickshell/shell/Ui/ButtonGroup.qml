@@ -1,4 +1,4 @@
-import QtQuick 6.11
+import QtQuick 6.0
 import qs.Commons
 
 // Mutually-exclusive row of Buttons — the form-style "pick one of N"

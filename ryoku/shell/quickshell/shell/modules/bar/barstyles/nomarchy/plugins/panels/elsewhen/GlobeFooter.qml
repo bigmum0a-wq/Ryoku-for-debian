@@ -1,4 +1,4 @@
-import QtQuick 6.11
+import QtQuick 6.0
 import qs.Commons
 
 // The selected city under the globe: name, local time and badge, then its

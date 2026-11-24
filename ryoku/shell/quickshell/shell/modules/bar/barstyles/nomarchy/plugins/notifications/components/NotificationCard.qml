@@ -3,7 +3,7 @@
 // panel drives static rendering. Both use the same component.
 
 import shell.services as ShellIcons
-import QtQuick 6.11
+import QtQuick 6.0
 import QtQuick.Layouts
 import Quickshell
 import qs.Commons

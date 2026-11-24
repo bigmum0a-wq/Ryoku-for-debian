@@ -1,6 +1,6 @@
 pragma Singleton
 import Quickshell
-import QtQuick 6.11
+import QtQuick 6.0
 import Ryoku.Ui.Singletons
 
 // Shared utility helpers used across plugins. Pure functions only — no

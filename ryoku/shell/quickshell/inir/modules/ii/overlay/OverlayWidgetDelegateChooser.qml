@@ -1,6 +1,8 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Qt.labs.qmlmodels
+import QtQml.Models
 import inir.modules.ii.overlay.crosshair
 import inir.modules.ii.overlay.discord
 import inir.modules.ii.overlay.floatingImage

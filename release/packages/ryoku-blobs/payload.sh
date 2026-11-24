@@ -28,7 +28,12 @@ install)
 		install -dm755 "$destdir/usr/lib/qt6/qml/Ryoku/$module"
 		cp -a "$RYOKU_BUILD_DIR/qml/Ryoku/$module/." "$destdir/usr/lib/qt6/qml/Ryoku/$module/"
 	done
-	chmod -R u=rwX,go=rX "$destdir/usr/lib/qt6"
+	# Debian Qt 6.8 compat: install RectangularShadow stub into QtQuick/Effects
+	# (RectangularShadow was added in Qt 6.9; this stub uses MultiEffect as fallback)
+	install -dm755 "$destdir/usr/lib/x86_64-linux-gnu/qt6/qml/QtQuick/Effects"
+	cp "$RYOKU_SRC/debian/packages/stubs/QtQuick/Effects/RectangularShadow.qml" \
+		"$destdir/usr/lib/x86_64-linux-gnu/qt6/qml/QtQuick/Effects/RectangularShadow.qml"
+	chmod -R u=rwX,go=rX "$destdir/usr/lib/qt6" "$destdir/usr/lib/x86_64-linux-gnu/qt6/qml/QtQuick"
 	;;
 *)
 	printf 'usage: payload.sh build | install DESTDIR systemd|runit\n' >&2

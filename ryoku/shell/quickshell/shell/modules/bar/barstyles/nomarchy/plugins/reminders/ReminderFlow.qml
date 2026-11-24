@@ -1,6 +1,6 @@
 import Quickshell
 import Quickshell.Wayland
-import QtQuick 6.11
+import QtQuick 6.0
 import qs.Commons
 import qs.Ui
 import "ReminderFlowModel.js" as ReminderFlowModel

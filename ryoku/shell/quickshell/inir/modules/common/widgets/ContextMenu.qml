@@ -2,6 +2,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Qt.labs.qmlmodels
+import QtQml.Models
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Widgets

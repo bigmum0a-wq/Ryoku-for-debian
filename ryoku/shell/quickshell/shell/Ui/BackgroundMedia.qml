@@ -1,4 +1,4 @@
-import QtQuick 6.11
+import QtQuick 6.0
 import qs.Commons
 
 // The shell draws stills only. OWE owns video backgrounds on the desktop, and

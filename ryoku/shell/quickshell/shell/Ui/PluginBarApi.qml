@@ -1,4 +1,4 @@
-import QtQuick 6.11
+import QtQuick 6.0
 
 // Bar surface exposed to an installed third-party widget. Scalar presentation
 // state is mirrored by Bar.qml and operations are delegated through scoped

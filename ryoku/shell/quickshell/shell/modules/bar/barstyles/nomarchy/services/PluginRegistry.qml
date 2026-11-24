@@ -1,4 +1,4 @@
-import QtQuick 6.11
+import QtQuick 6.0
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -804,7 +804,7 @@ QtObject {
       + "    while IFS= read -r -d '' rel; do mkdir -p -- \"$tmp/$rel\"; done < <(cd -- \"$sub\" && find . -name .git -prune -o -type d -print0); "
       + "    while IFS= read -r -d '' rel; do "
       + "      if [[ \"$rel\" == *.qml && -f \"$sub/$rel\" ]]; then "
-      + "        sed -E 's/^([[:space:]]*)import QtQuick[[:space:]]*;?[[:space:]]*$/\\1import QtQuick 6.11/' \"$sub/$rel\" > \"$tmp/$rel\" || { rm -rf -- \"$tmp\"; return 0; }; "
+      + "        sed -E 's/^([[:space:]]*)import QtQuick[[:space:]]*;?[[:space:]]*$/\\1import QtQuick 6.0/' \"$sub/$rel\" > \"$tmp/$rel\" || { rm -rf -- \"$tmp\"; return 0; }; "
       + "      else ln -s -- \"$sub/${rel#./}\" \"$tmp/$rel\" || { rm -rf -- \"$tmp\"; return 0; }; fi; "
       + "    done < <(cd -- \"$sub\" && find . -name .git -prune -o \\( -type f -o -type l \\) -print0); "
       + "    mv -T -- \"$tmp\" \"$dest\" 2>/dev/null || rm -rf -- \"$tmp\"; "

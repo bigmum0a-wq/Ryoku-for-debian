@@ -1,6 +1,6 @@
 // Notification service for the omarchy shell.
 
-import QtQuick 6.11
+import QtQuick 6.0
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io

@@ -1,4 +1,4 @@
-import QtQuick 6.11
+import QtQuick 6.0
 import qs.Commons
 
 // Small (22×22 by default) icon button used at the right edge of panel rows

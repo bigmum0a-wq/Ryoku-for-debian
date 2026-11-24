@@ -1,7 +1,7 @@
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import QtQuick 6.11
+import QtQuick 6.0
 import qs.Commons
 import qs.Ui
 import "EmojiSearch.js" as EmojiSearch

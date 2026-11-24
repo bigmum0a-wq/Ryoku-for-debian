@@ -433,11 +433,13 @@ func setupQmlImportPath() {
 		shellRoot = filepath.Join(shellDir, "quickshell")
 	}
 	dirs := []string{shellRoot}
+	// Always include ~/.local/lib/qt6/qml for user-level QML overrides and stubs
+	// (e.g., RectangularShadow compat stub for systems with Qt < 6.9).
+	dirs = append(dirs, filepath.Join(home, ".local", "lib", "qt6", "qml"))
 	exe, _ := os.Executable()
 	if strings.HasPrefix(exe, home+string(os.PathSeparator)) {
-		dirs = append(dirs, filepath.Join(home, ".local", "lib", "qt6", "qml"))
-	} else if _, err := os.Stat("/usr/lib/qt6/qml/Ryoku/Blobs/qmldir"); err != nil {
-		dirs = append(dirs, filepath.Join(home, ".local", "lib", "qt6", "qml"))
+		// dev deploy: nothing extra needed, already added
+		_ = exe
 	}
 	prefix := strings.Join(dirs, string(os.PathListSeparator))
 	for _, name := range []string{"QML2_IMPORT_PATH", "QML_IMPORT_PATH"} {

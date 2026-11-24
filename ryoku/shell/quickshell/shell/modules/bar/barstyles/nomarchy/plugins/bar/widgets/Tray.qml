@@ -1,5 +1,5 @@
 import Quickshell
-import QtQuick 6.11
+import QtQuick 6.0
 import QtQuick.Controls
 import QtQuick.Effects
 import Quickshell.Services.SystemTray

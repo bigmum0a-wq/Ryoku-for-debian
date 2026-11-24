@@ -1,4 +1,4 @@
-import QtQuick 6.11
+import QtQuick 6.0
 import qs.Commons
 
 // 1px horizontal divider for panel sections. The alpha-on-foreground tint
