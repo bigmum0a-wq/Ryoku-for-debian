@@ -116,17 +116,37 @@ RYOKU_BUILD_DIR="$PALETTE_BUILD" "$REPO_ROOT/release/packages/ryoku-palette-brid
 package_deb "ryoku-palette-bridge" "$ARCH" "ryoku-cli" \
   "Ryoku Palette Bridge for dynamic wallpaper-derived color sync" "$PALETTE_DIR"
 
-# 5. ryoku-desktop (metapackage and shared configs)
+# 5. ryoku-blobs
+log "Building ryoku-blobs"
+BLOBS_DIR="$WORK_DIR/blobs"
+BLOBS_BUILD="$WORK_DIR/build/blobs"
+mkdir -p "$BLOBS_DIR" "$BLOBS_BUILD"
+if dpkg -l qt6-shadertools-dev >/dev/null 2>&1 && dpkg -l qt6-quick3d-dev >/dev/null 2>&1; then
+  RYOKU_BUILD_DIR="$BLOBS_BUILD" "$REPO_ROOT/release/packages/ryoku-blobs/payload.sh" build
+  RYOKU_BUILD_DIR="$BLOBS_BUILD" "$REPO_ROOT/release/packages/ryoku-blobs/payload.sh" install "$BLOBS_DIR" systemd
+else
+  log "Qt6 shader/quick3d dev tools not available; packaging QML fallback stubs"
+  PREBUILT_BLOBS="$WORK_DIR/prebuilt-blobs"
+  mkdir -p "$PREBUILT_BLOBS/qml/Ryoku"
+  cp -a "$REPO_ROOT/debian/packages/stubs/Ryoku/Blobs" "$PREBUILT_BLOBS/qml/Ryoku/"
+  cp -a "$REPO_ROOT/debian/packages/stubs/Ryoku/Spatial3D" "$PREBUILT_BLOBS/qml/Ryoku/"
+  RYOKU_PREBUILT_DIR="$PREBUILT_BLOBS" RYOKU_BUILD_DIR="$BLOBS_BUILD" "$REPO_ROOT/release/packages/ryoku-blobs/payload.sh" build
+  RYOKU_PREBUILT_DIR="$PREBUILT_BLOBS" RYOKU_BUILD_DIR="$BLOBS_BUILD" "$REPO_ROOT/release/packages/ryoku-blobs/payload.sh" install "$BLOBS_DIR" systemd
+fi
+package_deb "ryoku-blobs" "$ARCH" "quickshell" \
+  "Ryoku Blobs and Spatial3D QML components" "$BLOBS_DIR"
+
+# 6. ryoku-desktop (metapackage and shared configs)
 log "Building ryoku-desktop"
 DESKTOP_DIR="$WORK_DIR/desktop"
 DESKTOP_BUILD="$WORK_DIR/build/desktop"
 mkdir -p "$DESKTOP_DIR" "$DESKTOP_BUILD"
 RYOKU_BUILD_DIR="$DESKTOP_BUILD" "$REPO_ROOT/release/packages/ryoku-desktop/payload.sh" install "$DESKTOP_DIR" systemd
 package_deb "ryoku-desktop" "all" \
-  "ryoku-cli (>= $PKGVER), ryoku-shell (>= $PKGVER), ryoku-palette-bridge (>= $PKGVER), wireplumber, pipewire" \
+  "ryoku-cli (>= $PKGVER), ryoku-shell (>= $PKGVER), ryoku-palette-bridge (>= $PKGVER), ryoku-blobs (>= $PKGVER), wireplumber, pipewire" \
   "Ryoku Desktop Environment (metapackage and system configuration)" "$DESKTOP_DIR"
 
-# 6. Index packages into repository
+# 7. Index packages into repository
 log "Indexing APT repository"
 cd "$OUT_DIR"
 dpkg-scanpackages --multiversion pool/ > "$DISTS_DIR/Packages"

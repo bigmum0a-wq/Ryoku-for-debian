@@ -1,0 +1,16 @@
+module Ryoku.Blobs
+BlobGroup 1.0 BlobGroup.qml
+BlobShape 1.0 BlobShape.qml
+BlobRect 1.0 BlobRect.qml
+BlobWave 1.0 BlobWave.qml
+BlobInvertedRect 1.0 BlobInvertedRect.qml
+BlobMaterial 1.0 BlobMaterial.qml
+BorderBeam 1.0 BorderBeam.qml
+BorderMaterial 1.0 BorderMaterial.qml
+CameraFeed 1.0 CameraFeed.qml
+CavaFeed 1.0 CavaFeed.qml
+CavaSpectrum 1.0 CavaSpectrum.qml
+WaveCapture 1.0 WaveCapture.qml
+SystemMonitor 1.0 SystemMonitor.qml
+SystemGraph 1.0 SystemGraph.qml
+ThinkingOrb 1.0 ThinkingOrb.qml
