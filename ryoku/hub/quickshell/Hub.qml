@@ -140,6 +140,7 @@ Rectangle {
             { key: "displays", name: "Displays", needs: { cap: "monitorConfig" } }, { key: "connections", name: "Connections" },
             { key: "input", name: "Input" }, { key: "gpu", name: "Graphics & Power" } ] },
         { name: "LOOK", items: [
+            { key: "themes", name: "Themes & Colors", wired: true },
             { key: "animations", name: "Animations" }, { key: "lockscreen", name: "Lockscreen" } ] },
         { name: "COMPOSITOR", items: [
             { key: "windowmanager", name: "Window Manager", needs: { provider: true } }, { key: "plugins", name: "Plugins", needs: { cap: "plugins" } },
@@ -169,7 +170,7 @@ Rectangle {
         "profile": "横顔", "displays": "画面", "input": "入力", "keybinds": "操作",
         "connections": "接続", "gpu": "演算", "recording": "録画", "dictation": "音声",
         "plugins": "補", "subshells": "殻", "bar-studio": "帯", "desktop": "卓上", "controls": "操作",
-        "overlays": "重ね", "launcher": "起動", "fastfetch": "情報", "lockscreen": "施錠", "animations": "動き",
+        "overlays": "重ね", "launcher": "起動", "fastfetch": "情報", "lockscreen": "施錠", "animations": "動き", "themes": "配色",
         "gamebar": "遊戯",
         "addons": "拡張", "windowrules": "規則", "appoverrides": "上書", "layerrules": "階層",
         "session": "起動", "performance": "性能", "rashin": "羅針",
@@ -202,6 +203,7 @@ Rectangle {
         "fastfetch": "fetch neofetch terminal system info logo ascii emblem readout",
         "lockscreen": "lock screensaver signin greeter skin theme login",
         "animations": "animation animations motion transition bezier curve speed feel wobbly disable enable toggle",
+        "themes": "theme themes color colour palette dark light matugen opacity radius border wallpaper",
         "addons": "installed plugin addon extension manage enable remove update widget bundle extras store marketplace browse",
         "windowrules": "window rule float pin size place opacity class title override",
         "appoverrides": "app override per-app opacity blur corner class inherit opaque transparent",
@@ -535,7 +537,7 @@ Rectangle {
             "plugins": "PluginsPage", "profile": "ProfilePage",
             "subshells": "SubshellsPage", "bar-studio": "BarStudioPage", "desktop": "DesktopPage", "controls": "ControlsPage", "overlays": "OverlaysPage", "session": "SessionPage",
             "layerrules": "LayerRulesPage", "windowrules": "WindowRulesPage",
-            "appoverrides": "AppOverridesPage", "animations": "AnimationsPage",
+            "appoverrides": "AppOverridesPage", "animations": "AnimationsPage", "themes": "ThemesPage",
             "input": "InputPage", "keybinds": "KeybindsPage",
             "dictation": "DictationPage", "displays": "DisplaysPage",
             "connections": "ConnectionsPage", "gpu": "GpuPage",

@@ -30,8 +30,7 @@ ShellRoot {
         // lock so reopening no-ops.
         readonly property int fitW: (win.screen && win.screen.width > 0) ? Math.round(win.screen.width * 0.99) : 1200
         readonly property int fitH: (win.screen && win.screen.height > 0) ? Math.round((win.screen.height - 56) * 0.99) : 880
-        minimumSize: Qt.size(Math.min(1120, win.fitW), Math.min(820, win.fitH))
-        maximumSize: Qt.size(win.fitW, win.fitH)
+        minimumSize: Qt.size(640, 480)
         color: Tokens.paper
 
         // Honour this monitor's Interface scale (Displays page): scale the whole

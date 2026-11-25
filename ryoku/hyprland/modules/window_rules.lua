@@ -123,9 +123,7 @@ hl.window_rule({
 hl.window_rule({
 	name   = "float-ryoku-settings",
 	match  = { title = "^(Ryoku Settings)$" },
-	float  = true,
-	size   = page(),
-	center = true,
+	float  = false,
 })
 
 

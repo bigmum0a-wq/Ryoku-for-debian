@@ -6,7 +6,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../../.." && pwd)
 
 OUT_DIR=${RYOKU_DEB_OUT:-$SCRIPT_DIR/out}
-PKGVER=${RYOKU_PKGVER:-1.1.0-1}
+PKGVER=${RYOKU_PKGVER:-1.2.0-1}
 SUITE=${RYOKU_DEB_SUITE:-trixie}
 ARCH=${RYOKU_DEB_ARCH:-amd64}
 CODENAME=$(tr -d '[:space:]' < "$REPO_ROOT/CODENAME" 2>/dev/null || echo "Amaterasu")
@@ -90,7 +90,7 @@ log "Building ryoku-shell"
 SHELL_DIR="$WORK_DIR/shell"
 SHELL_BUILD="$WORK_DIR/build/shell"
 mkdir -p "$SHELL_DIR" "$SHELL_BUILD"
-if ! pkg-config --exists wayland-protocols 2>/dev/null; then
+if ! pkg-config --exists wayland-protocols wayland-client libavformat libavcodec libavutil libswscale 2>/dev/null; then
   log "wayland-protocols dev package not found; staging prebuilt ryoku-shell and fallback livewall"
   PREBUILT_SHELL="$WORK_DIR/prebuilt-shell"
   mkdir -p "$PREBUILT_SHELL"
@@ -103,6 +103,13 @@ else
   RYOKU_BUILD_DIR="$SHELL_BUILD" "$REPO_ROOT/release/packages/ryoku-shell/payload.sh" build
   RYOKU_BUILD_DIR="$SHELL_BUILD" "$REPO_ROOT/release/packages/ryoku-shell/payload.sh" install "$SHELL_DIR" systemd
 fi
+# Build and package ryogami & ryoku-hub so wallpaper daemon and Hub backend are always in /usr/bin
+log "Building ryogami"
+( cd "$REPO_ROOT/ryoku/shell/ryogami/daemon" && CGO_ENABLED=0 go build -trimpath -o "$SHELL_DIR/usr/bin/ryogami" . )
+chmod 755 "$SHELL_DIR/usr/bin/ryogami"
+log "Building ryoku-hub"
+( cd "$REPO_ROOT/ryoku/hub/backend" && CGO_ENABLED=0 go build -trimpath -o "$SHELL_DIR/usr/bin/ryoku-hub" . )
+chmod 755 "$SHELL_DIR/usr/bin/ryoku-hub"
 package_deb "ryoku-shell" "$ARCH" "quickshell, bash" \
   "Ryoku Desktop Shell IPC and supervision daemon" "$SHELL_DIR"
 
@@ -168,8 +175,12 @@ mkdir -p "$DESKTOP_DIR" "$DESKTOP_BUILD"
 RYOKU_BUILD_DIR="$DESKTOP_BUILD" "$REPO_ROOT/release/packages/ryoku-desktop/payload.sh" install "$DESKTOP_DIR" systemd
 mkdir -p "$DESKTOP_DIR/usr/lib/x86_64-linux-gnu/qt6/qml"
 ln -sfn /usr/lib/qt6/qml/Ryoku "$DESKTOP_DIR/usr/lib/x86_64-linux-gnu/qt6/qml/Ryoku"
+if [ -f "$REPO_ROOT/debian/packages/fonts/MaterialSymbolsRounded.ttf" ]; then
+  install -Dm644 "$REPO_ROOT/debian/packages/fonts/MaterialSymbolsRounded.ttf" \
+    "$DESKTOP_DIR/usr/share/fonts/truetype/ryoku/MaterialSymbolsRounded.ttf"
+fi
 package_deb "ryoku-desktop" "all" \
-  "ryoku-cli (>= $PKGVER), ryoku-shell (>= $PKGVER), ryoku-palette-bridge (>= $PKGVER), ryoku-blobs (>= $PKGVER), ryoku-desktop-hyprland (>= $PKGVER), qml6-module-qtquick3d, wireplumber, pipewire" \
+  "ryoku-cli (>= $PKGVER), ryoku-shell (>= $PKGVER), ryoku-palette-bridge (>= $PKGVER), ryoku-blobs (>= $PKGVER), ryoku-desktop-hyprland (>= $PKGVER), qml6-module-qtquick3d, wireplumber, pipewire, grim, slurp, wl-clipboard, tesseract-ocr, playerctl, cava, hyprpicker, hyprsunset, hypridle, ffmpeg, mpv, jq, socat" \
   "Ryoku Desktop Environment (metapackage and system configuration)" "$DESKTOP_DIR"
 
 # 8. Index packages into repository
