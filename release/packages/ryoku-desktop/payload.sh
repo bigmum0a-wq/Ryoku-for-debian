@@ -296,6 +296,10 @@ EOF
   # not sit on Xwayland where it renders pages blank on NVIDIA).
   install -Dm644 "$_repo/ryoku/apps/chromium-flags.conf" "$cfg/chromium-flags.conf"
   install -Dm644 "$_repo/ryoku/apps/chromium-flags.conf" "$cfg/chrome-flags.conf"
+  install -Dm644 "$_repo/ryoku/apps/chromium-flags.conf" "$cfg/code-flags.conf"
+  install -Dm644 "$_repo/ryoku/apps/chromium-flags.conf" "$cfg/codium-flags.conf"
+  install -Dm644 "$_repo/ryoku/apps/chromium-flags.conf" "$cfg/electron-flags.conf"
+  install -Dm644 "$_repo/ryoku/apps/chromium-flags.conf" "$cfg/brave-flags.conf"
 
   # the qylock lockscreen bundle + its installer, so doctor can install or
   # repair the in-session lock on a box the ISO step missed (or that predates

@@ -61,7 +61,15 @@ hl.env("GSK_RENDERER", "gl")
 -- daemon keeps in sync) but needs plasma-integration, which Ryoku does not ship,
 -- so switching here would strip plain Qt apps of their palette, Papirus icons
 -- and font. A user who installs plasma-integration can set kde here themselves.
-hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
+-- Prefer qt6ct if installed; otherwise fall back to KDE plasma-integration
+-- (which reads ~/.config/kdeglobals synced by ryoku-apply-kde-theme).
+local qt6ct_bin = io.open("/usr/bin/qt6ct", "r")
+if qt6ct_bin then
+    qt6ct_bin:close()
+    hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
+else
+    hl.env("QT_QPA_PLATFORMTHEME", "kde")
+end
 
 -- Shared QML modules (Ryoku.Ui, Ryoku.PluginKit, Ryoku.Blobs) live in
 -- /usr/lib/qt6/qml on an installed system, which Qt finds on its own. A

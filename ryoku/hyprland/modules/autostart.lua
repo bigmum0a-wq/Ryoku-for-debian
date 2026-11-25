@@ -1,9 +1,9 @@
 -- The Hyprland provider's login bootstrap; a second compositor ships its own.
 hl.on("hyprland.start", function()
     -- Start the GNOME keyring's secrets + pkcs11 agents before anything that
-    -- might ask for a stored secret. Idempotent: if PAM already started it at
-    -- login (unlock-on-login mode), this just re-prints its env and exits.
-    hl.exec_cmd("gnome-keyring-daemon --start --components=secrets,pkcs11")
+    -- might ask for a stored secret, and propagate env to systemd/D-Bus.
+    hl.exec_cmd("systemctl --user start gnome-keyring-daemon.service 2>/dev/null || true")
+    hl.exec_cmd("eval $(gnome-keyring-daemon --start --components=secrets,pkcs11 2>/dev/null) && dbus-update-activation-environment --systemd --all >/dev/null 2>&1 || true")
     hl.exec_cmd("ryoku-wm-hyprland act cursor.set Bibata-Modern-Ice 24")
     hl.exec_cmd("gsettings set org.gnome.desktop.interface color-scheme prefer-dark")
     -- adw-gtk3-dark, not Adwaita-dark: stock Adwaita GTK3 hardcodes its colours,
@@ -23,7 +23,7 @@ hl.on("hyprland.start", function()
     -- that matches the rest of the desktop), so the stock Qt agent must not
     -- take the session's single agent slot. Stopping it is idempotent and
     -- harmless when it was never started.
-    hl.exec_cmd("systemctl --user stop hyprpolkitagent 2>/dev/null || true")
+    hl.exec_cmd("systemctl --user stop hyprpolkitagent plasma-polkit-agent.service 2>/dev/null || true")
     hl.exec_cmd("command -v ryoku-monitor >/dev/null 2>&1 && ryoku-monitor autoscale")
     -- per-output tiling kept while the display link is off; does nothing when linked
     hl.exec_cmd("command -v ryoku-output-tiling >/dev/null 2>&1 && ryoku-output-tiling restore")
@@ -38,6 +38,8 @@ hl.on("hyprland.start", function()
     -- keyring for never-ask (idempotent; a no-op once a mode is chosen). Best
     -- effort: an old ryoku without the subcommand just fails silently here.
     hl.exec_cmd("command -v ryoku >/dev/null 2>&1 && ryoku keyring init")
+    -- Ensure VS Code (Debian/Microsoft .deb) uses gnome-libsecret under Hyprland
+    hl.exec_cmd([[command -v code >/dev/null 2>&1 && python3 -c 'import json,os,re; p=os.path.expanduser("~/.vscode/argv.json"); os.makedirs(os.path.dirname(p),exist_ok=True); raw=open(p).read() if os.path.exists(p) else ""; d=json.loads(re.sub(r"^\s*//.*$","",raw,flags=re.M)) if raw.strip() else {}; (d.get("password-store")!="gnome-libsecret") and (d.__setitem__("password-store","gnome-libsecret"), json.dump(d,open(p,"w"),indent=4))' 2>/dev/null || true]])
     hl.exec_cmd("command -v ryoku-gpu >/dev/null 2>&1 && ryoku-gpu persist")
     -- Power knobs the kernel forgets across a reboot: the battery charge ceiling
     -- and the PCIe link policy are plain sysfs values, so a stored choice has to
