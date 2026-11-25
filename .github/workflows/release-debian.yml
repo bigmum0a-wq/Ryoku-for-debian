@@ -35,12 +35,16 @@ jobs:
           echo "pkgver=$PKGVER" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'ryoku/shell/ipc/go.mod'
+
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             dpkg-dev apt-utils gnupg \
-            golang-go \
             pkg-config wayland-protocols libwayland-dev \
             libavformat-dev libavcodec-dev libavutil-dev libswscale-dev
 
@@ -79,6 +83,13 @@ jobs:
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: Ryoku Desktop Debian/Kali ${{ steps.ver.outputs.tag }}
-          generate_release_notes: true
+          body: |
+            Ryoku Desktop for Debian 13 (Trixie), Kali Linux & ParrotOS (${{ steps.ver.outputs.tag }}).
+
+            ### Included
+            - 7 native `.deb` packages (`ryoku-desktop`, `ryoku-desktop-hyprland`, `ryoku-shell`, `ryoku-cli`, `ryoku-palette-bridge`, `ryoku-blobs`, `ryoku-archive-keyring`)
+            - `ryoku-deb-repo-*.tar.gz` (full GPG-signed APT repository)
+            - `SHA256SUMS`, `SHA256SUMS.asc`, and `ryoku-debian-release.pub.asc` (Ed25519 signing key)
+            - `install-online.sh`
           files: |
             dist/*
