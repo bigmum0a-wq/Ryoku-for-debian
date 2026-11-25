@@ -31,7 +31,7 @@ ShellRoot {
 
     Process {
         id: listProc
-        command: [Quickshell.env("HOME") + "/.local/bin/ryoku-dock-picker", "--list"]
+        command: ["sh", "-c", 'exec "$(command -v ryoku-dock-picker || echo "$HOME/.local/bin/ryoku-dock-picker")" --list']
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
@@ -213,11 +213,10 @@ ShellRoot {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                var bin = Quickshell.env("HOME") + "/.local/bin/ryoku-dock-picker";
                                 if (root.mode === "replace")
-                                    actProc.command = [bin, "--replace", root.targetId, modelData.id];
+                                    actProc.command = ["sh", "-c", 'exec "$(command -v ryoku-dock-picker || echo "$HOME/.local/bin/ryoku-dock-picker")" --replace "$1" "$2"', "sh", root.targetId, modelData.id];
                                 else
-                                    actProc.command = [bin, "--toggle", modelData.id];
+                                    actProc.command = ["sh", "-c", 'exec "$(command -v ryoku-dock-picker || echo "$HOME/.local/bin/ryoku-dock-picker")" --toggle "$1"', "sh", modelData.id];
                                 actProc.running = true;
                             }
                         }

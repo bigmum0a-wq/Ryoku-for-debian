@@ -6,7 +6,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../../.." && pwd)
 
 OUT_DIR=${RYOKU_DEB_OUT:-$SCRIPT_DIR/out}
-PKGVER=${RYOKU_PKGVER:-1.2.2-1}
+PKGVER=${RYOKU_PKGVER:-1.2.3-1}
 SUITE=${RYOKU_DEB_SUITE:-trixie}
 ARCH=${RYOKU_DEB_ARCH:-amd64}
 CODENAME=$(tr -d '[:space:]' < "$REPO_ROOT/CODENAME" 2>/dev/null || echo "Amaterasu")
@@ -193,10 +193,10 @@ if [ -f "$REPO_ROOT/debian/packages/fonts/MaterialSymbolsRounded.ttf" ]; then
   install -Dm644 "$REPO_ROOT/debian/packages/fonts/MaterialSymbolsRounded.ttf" \
     "$DESKTOP_DIR/usr/share/fonts/truetype/ryoku/MaterialSymbolsRounded.ttf"
 fi
-if [ -f "$REPO_ROOT/debian/packages/bin/ryoku-apply-kde-theme" ]; then
-  install -Dm755 "$REPO_ROOT/debian/packages/bin/ryoku-apply-kde-theme" \
-    "$DESKTOP_DIR/usr/bin/ryoku-apply-kde-theme"
-fi
+for helper_bin in "$REPO_ROOT/debian/packages/bin/"*; do
+  [ -f "$helper_bin" ] || continue
+  install -Dm755 "$helper_bin" "$DESKTOP_DIR/usr/bin/$(basename "$helper_bin")"
+done
 find "$DESKTOP_DIR/usr/share/ryoku" \( -name "README.md" -o -name "__pycache__" -o -name "*.pyc" \) -exec rm -rf {} + 2>/dev/null || true
 package_deb "ryoku-desktop" "$ARCH" \
   "ryoku-cli (>= $PKGVER), ryoku-shell (>= $PKGVER), ryoku-palette-bridge (>= $PKGVER), ryoku-blobs (>= $PKGVER), ryoku-desktop-hyprland (>= $PKGVER), qml6-module-qtquick3d, wireplumber, pipewire, grim, slurp, wl-clipboard, tesseract-ocr, playerctl, cava, hyprpicker, hyprsunset, hypridle, ffmpeg, mpv, jq, socat, gnome-keyring, libsecret-1-0, xdg-desktop-portal-gtk, qt6ct, papirus-icon-theme" \

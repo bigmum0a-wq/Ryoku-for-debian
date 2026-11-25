@@ -159,7 +159,10 @@ hl.bind(K(mod .. " + mouse:273"), hl.dsp.window.resize(), { mouse = true })
 -- the monitor under the cursor, so the keys drive whichever screen the mouse is
 -- on. Super+Alt+N sends the active window to that slot, staying on this desktop.
 local ws_helper = (os.getenv("HOME") or "") .. "/.config/hypr/scripts/ryoku-workspace"
-local winstash_bin = (os.getenv("HOME") or "") .. "/.local/bin/ryoku-winstash"
+local local_winstash = (os.getenv("HOME") or "") .. "/.local/bin/ryoku-winstash"
+local f_ws = io.open(local_winstash, "r")
+local winstash_bin = f_ws and local_winstash or "/usr/bin/ryoku-winstash"
+if f_ws then f_ws:close() end
 
 hl.bind(K(mod .. " + H"),          hl.dsp.exec_cmd(winstash_bin .. " hide"))           -- stash the focused window into the corner stack
 hl.bind(K(mod .. " + SHIFT + H"),  hl.dsp.exec_cmd(winstash_bin .. " toggle-ui"))      -- fan out / collapse stashed windows (macOS Stage Manager style)

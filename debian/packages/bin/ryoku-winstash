@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+"""
+ryoku-winstash — macOS-style window stashing & fanned-stack helper for Hyprland (Lua IPC).
+
+Commands:
+  hide              Move the currently active window to special:stash (or back if already stashed)
+  list              Print JSON list of windows currently in special:stash
+  focus <address>   Bring <address> from special:stash to the active workspace
+  close <address>   Close <address>
+  restore-all       Bring all stashed windows back to the active workspace
+  toggle-ui         Toggle the expanded fanned-stack UI state file
+"""
+import json
+import os
+import subprocess
+import sys
+
+UI_STATE_FILE = os.path.join(
+    os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "ryoku-winstash-open"
+)
+
+
+def hypr_json(cmd):
+    out = subprocess.check_output(["hyprctl", "-j", cmd], text=True)
+    return json.loads(out)
+
+
+def lua_dispatch(expr):
+    subprocess.run(
+        ["hyprctl", "dispatch", expr],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def active_ws_id():
+    ws = hypr_json("activeworkspace")
+    return int(ws.get("id", 1))
+
+
+def special_ws_name():
+    monitors = hypr_json("monitors")
+    for m in monitors:
+        if m.get("focused"):
+            return (m.get("specialWorkspace") or {}).get("name", "")
+    return ""
+
+
+def cmd_hide():
+    win = hypr_json("activewindow")
+    addr = win.get("address")
+    if not addr:
+        return 0
+    ws_name = (win.get("workspace") or {}).get("name", "")
+    back = active_ws_id()
+    if ws_name.startswith("special:"):
+        lua_dispatch(f'hl.dsp.window.move({{ workspace = {back} }})')
+    else:
+        lua_dispatch('hl.dsp.window.move({ workspace = "special:stash", silent = true })')
+        if special_ws_name() == "special:stash":
+            lua_dispatch('hl.dsp.workspace.toggle_special("stash")')
+        lua_dispatch(f'hl.dsp.focus({{ workspace = {back} }})')
+    return 0
+
+
+def cmd_list():
+    clients = hypr_json("clients")
+    stashed = []
+    for c in clients:
+        ws = c.get("workspace") or {}
+        if ws.get("name") == "special:stash":
+            stashed.append({
+                "address": c.get("address", ""),
+                "class": c.get("class") or c.get("initialClass") or "app",
+                "title": c.get("title") or c.get("initialTitle") or "Window",
+                "pid": c.get("pid", 0),
+            })
+    print(json.dumps(stashed))
+    return 0
+
+
+def cmd_focus(addr, swap=False):
+    if not addr:
+        return 1
+    ws_id = active_ws_id()
+    prev_addr = None
+    if swap:
+        active = hypr_json("activewindow")
+        prev_addr = active.get("address")
+        if prev_addr == addr:
+            prev_addr = None
+    lua_dispatch(f'hl.dsp.window.move({{ workspace = {ws_id}, window = "address:{addr}" }})')
+    lua_dispatch(f'hl.dsp.focus({{ window = "address:{addr}" }})')
+    if swap and prev_addr:
+        lua_dispatch(f'hl.dsp.window.move({{ workspace = "special:stash", silent = true, window = "address:{prev_addr}" }})')
+        if special_ws_name() == "special:stash":
+            lua_dispatch('hl.dsp.workspace.toggle_special("stash")')
+    try:
+        os.remove(UI_STATE_FILE)
+    except FileNotFoundError:
+        pass
+    return 0
+
+
+def cmd_close(addr):
+    if not addr:
+        return 1
+    lua_dispatch(f'hl.dsp.window.close({{ window = "address:{addr}" }})')
+    return 0
+
+
+def cmd_restore_all():
+    ws_id = active_ws_id()
+    clients = hypr_json("clients")
+    for c in clients:
+        ws = c.get("workspace") or {}
+        if ws.get("name") == "special:stash":
+            addr = c.get("address")
+            if addr:
+                lua_dispatch(f'hl.dsp.window.move({{ workspace = {ws_id}, window = "address:{addr}", silent = true }})')
+    try:
+        os.remove(UI_STATE_FILE)
+    except FileNotFoundError:
+        pass
+    return 0
+
+
+def cmd_toggle_ui():
+    if os.path.exists(UI_STATE_FILE):
+        os.remove(UI_STATE_FILE)
+    else:
+        with open(UI_STATE_FILE, "w", encoding="utf-8") as f:
+            f.write("1")
+    return 0
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        return 1
+    action = sys.argv[1]
+    if action == "hide":
+        return cmd_hide()
+    if action == "list":
+        return cmd_list()
+    if action == "focus" and len(sys.argv) >= 3:
+        swap = "--swap" in sys.argv
+        return cmd_focus(sys.argv[2], swap=swap)
+    if action == "close" and len(sys.argv) >= 3:
+        return cmd_close(sys.argv[2])
+    if action == "restore-all":
+        return cmd_restore_all()
+    if action == "toggle-ui":
+        return cmd_toggle_ui()
+    print(__doc__)
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

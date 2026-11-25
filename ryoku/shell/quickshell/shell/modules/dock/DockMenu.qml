@@ -37,7 +37,6 @@ Item {
 
     function close() { Svc.Dock.closeMenu(); }
     function act(key) {
-        const home = Quickshell.env("HOME") || "";
         if (key === "open")
             Svc.Dock.menuActOpen();
         else if (key === "pin")
@@ -45,13 +44,13 @@ Item {
         else if (key === "replace") {
             const target = Svc.Dock.menuClass || "";
             Svc.Dock.closeMenu();
-            Quickshell.execDetached([home + "/.local/bin/ryoku-dock-picker", "--ui-replace", target]);
+            Quickshell.execDetached(["sh", "-c", 'exec "$(command -v ryoku-dock-picker || echo "$HOME/.local/bin/ryoku-dock-picker")" --ui-replace "$1"', "sh", target]);
         } else if (key === "manage") {
             Svc.Dock.closeMenu();
-            Quickshell.execDetached([home + "/.local/bin/ryoku-dock-picker", "--ui-manage"]);
+            Quickshell.execDetached(["sh", "-c", 'exec "$(command -v ryoku-dock-picker || echo "$HOME/.local/bin/ryoku-dock-picker")" --ui-manage']);
         } else if (key === "stash") {
             Svc.Dock.closeMenu();
-            Quickshell.execDetached([home + "/.local/bin/ryoku-winstash", "toggle-ui"]);
+            Quickshell.execDetached(["sh", "-c", 'exec "$(command -v ryoku-winstash || echo "$HOME/.local/bin/ryoku-winstash")" toggle-ui']);
         } else
             Svc.Dock.menuActClose();
     }

@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""
+ryoku-dock-picker — Manage or replace pinned apps in the Ryoku bottom dock.
+
+Usage:
+  ryoku-dock-picker --list
+  ryoku-dock-picker --replace <oldId> <newId>
+  ryoku-dock-picker --toggle <appId>
+  ryoku-dock-picker --ui-replace <oldId>
+  ryoku-dock-picker --ui-manage
+"""
+import configparser
+import glob
+import json
+import os
+import subprocess
+import sys
+
+SHELL_JSON = os.path.expanduser("~/.config/ryoku/shell.json")
+QML_PATH = os.path.expanduser("~/.config/quickshell/dock-picker/shell.qml")
+
+
+def read_shell():
+    if not os.path.isfile(SHELL_JSON):
+        return {}
+    with open(SHELL_JSON, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def write_shell(data):
+    tmp = SHELL_JSON + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, SHELL_JSON)
+
+
+def list_apps():
+    data = read_shell()
+    pinned = data.get("dock", {}).get("pinned", [])
+    pinned_set = set(pinned)
+
+    apps = {}
+    for d in ["/usr/share/applications", os.path.expanduser("~/.local/share/applications")]:
+        if not os.path.isdir(d):
+            continue
+        for path in sorted(glob.glob(os.path.join(d, "*.desktop"))):
+            desktop_id = os.path.basename(path)[:-8]
+            cp = configparser.ConfigParser(interpolation=None)
+            try:
+                cp.read(path, encoding="utf-8")
+                if not cp.has_section("Desktop Entry"):
+                    continue
+                e = cp["Desktop Entry"]
+                if e.get("Type") != "Application":
+                    continue
+                if e.get("NoDisplay", "").lower() == "true":
+                    continue
+                if e.get("Hidden", "").lower() == "true":
+                    continue
+                name = e.get("Name", desktop_id).strip()
+                icon = e.get("Icon", "").strip()
+                apps[desktop_id] = {
+                    "id": desktop_id,
+                    "name": name,
+                    "icon": icon,
+                    "pinned": desktop_id in pinned_set,
+                }
+            except Exception:
+                continue
+
+    result = sorted(apps.values(), key=lambda a: (not a["pinned"], a["name"].lower()))
+    print(json.dumps(result))
+
+
+def replace_app(old_id, new_id):
+    data = read_shell()
+    dock = data.setdefault("dock", {})
+    pinned = list(dock.get("pinned", []))
+    if old_id in pinned:
+        idx = pinned.index(old_id)
+        if new_id in pinned:
+            pinned.remove(new_id)
+            idx = min(idx, len(pinned))
+        pinned.insert(idx, new_id)
+        if old_id in pinned:
+            pinned.remove(old_id)
+    elif new_id not in pinned:
+        pinned.append(new_id)
+    dock["pinned"] = pinned
+    dock["pinnedConfigured"] = True
+    write_shell(data)
+
+
+def toggle_app(app_id):
+    data = read_shell()
+    dock = data.setdefault("dock", {})
+    pinned = list(dock.get("pinned", []))
+    if app_id in pinned:
+        pinned.remove(app_id)
+    else:
+        pinned.append(app_id)
+    dock["pinned"] = pinned
+    dock["pinnedConfigured"] = True
+    write_shell(data)
+
+
+def launch_ui(mode, target=""):
+    env = os.environ.copy()
+    env["RYOKU_DOCK_PICKER_MODE"] = mode
+    env["RYOKU_DOCK_PICKER_TARGET"] = target
+    subprocess.Popen(
+        ["quickshell", "-p", QML_PATH],
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        return 1
+    cmd = sys.argv[1]
+    if cmd == "--list":
+        list_apps()
+        return 0
+    if cmd == "--replace" and len(sys.argv) >= 4:
+        replace_app(sys.argv[2], sys.argv[3])
+        return 0
+    if cmd == "--toggle" and len(sys.argv) >= 3:
+        toggle_app(sys.argv[2])
+        return 0
+    if cmd == "--ui-replace" and len(sys.argv) >= 3:
+        launch_ui("replace", sys.argv[2])
+        return 0
+    if cmd == "--ui-manage":
+        launch_ui("manage", "")
+        return 0
+    print(__doc__)
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

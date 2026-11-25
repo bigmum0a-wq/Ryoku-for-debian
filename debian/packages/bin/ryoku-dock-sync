@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+"""
+ryoku-dock-sync — Scan installed GUI .desktop applications and populate
+dock.pinned in ~/.config/ryoku/shell.json so the bottom dock reflects the
+applications installed on the machine (macOS-style).
+"""
+import configparser
+import glob
+import json
+import os
+import sys
+
+SHELL_JSON = os.path.expanduser("~/.config/ryoku/shell.json")
+
+# Priority order for common core apps if installed
+PRIORITY_IDS = [
+    "kitty",
+    "firefox-selector",
+    "firefox-esr",
+    "firefox",
+    "google-chrome",
+    "brave-browser",
+    "org.kde.dolphin",
+    "org.gnome.Nautilus",
+    "thunar",
+    "com.microsoft.VSCode",
+    "com.visualstudio.CodeOSS",
+    "code",
+    "virt-manager",
+    "org.kde.kate",
+    "geany",
+    "gimp",
+    "dbeaver-ce",
+    "Logseq",
+    "kdesystemsettings",
+    "blueman-manager",
+    "gufw",
+]
+
+# Skip internal/helper/duplicate entries that clutter a user dock
+EXCLUDE_PREFIXES = (
+    "cyberpunk-",
+    "debian-",
+    "idle",
+    "install-app",
+    "bleachbit-root",
+    "python",
+    "openjdk",
+    "avahi-",
+    "bssh",
+    "bvnc",
+    "qv4l2",
+    "qvidcap",
+    "lstopo",
+    "xgps",
+)
+
+MAX_PINS = 16
+
+
+def scan_installed_apps():
+    found = {}
+    for d in ["/usr/share/applications", os.path.expanduser("~/.local/share/applications")]:
+        if not os.path.isdir(d):
+            continue
+        for path in sorted(glob.glob(os.path.join(d, "*.desktop"))):
+            desktop_id = os.path.basename(path)[:-8]
+            if desktop_id.startswith(EXCLUDE_PREFIXES):
+                continue
+            cp = configparser.ConfigParser(interpolation=None)
+            try:
+                cp.read(path, encoding="utf-8")
+                if not cp.has_section("Desktop Entry"):
+                    continue
+                e = cp["Desktop Entry"]
+                if e.get("Type") != "Application":
+                    continue
+                if e.get("NoDisplay", "").lower() == "true":
+                    continue
+                if e.get("Hidden", "").lower() == "true":
+                    continue
+                if e.get("Terminal", "").lower() == "true" and desktop_id != "kitty":
+                    continue
+                if not e.get("Icon", "").strip():
+                    continue
+                found[desktop_id] = e.get("Name", desktop_id)
+            except Exception:
+                continue
+    return found
+
+
+def main():
+    max_pins = MAX_PINS
+    if "--max" in sys.argv:
+        try:
+            idx = sys.argv.index("--max")
+            max_pins = int(sys.argv[idx + 1])
+        except Exception:
+            pass
+
+    found = scan_installed_apps()
+    ordered = []
+    seen = set()
+
+    for app_id in PRIORITY_IDS:
+        if app_id in found and app_id not in seen:
+            ordered.append(app_id)
+            seen.add(app_id)
+
+    for app_id in sorted(found.keys(), key=lambda k: found[k].lower()):
+        if len(ordered) >= max_pins:
+            break
+        if app_id not in seen:
+            ordered.append(app_id)
+            seen.add(app_id)
+
+    if not os.path.isfile(SHELL_JSON):
+        print(f"ryoku-dock-sync: {SHELL_JSON} not found", file=sys.stderr)
+        return 1
+
+    with open(SHELL_JSON, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    dock = data.setdefault("dock", {})
+    dock["pinned"] = ordered
+    dock["pinnedConfigured"] = True
+
+    tmp = SHELL_JSON + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, SHELL_JSON)
+
+    print(f"ryoku-dock-sync: {len(ordered)} apps pinned -> {', '.join(ordered)}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

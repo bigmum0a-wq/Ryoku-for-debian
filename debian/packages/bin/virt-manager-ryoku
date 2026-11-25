@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Wrapper Ryoku pour virt-manager sous Hyprland/Wayland.
+#
+# Problème : sous Hyprland, GDK_BACKEND="wayland,x11,*" force GTK à essayer
+# Wayland d'abord, puis X11. Sans XAUTHORITY défini, le fallback X11 échoue
+# avec "Authorization required". virt-manager 5.x supporte GTK4 natif Wayland,
+# donc on force le backend Wayland et on évite le fallback X11.
+#
+# Pour l'accès libvirt : l'utilisateur appartient au groupe "libvirt",
+# ce qui lui donne accès à qemu:///system sans mot de passe (polkit rule).
+
+# Forcer Wayland natif : pas de fallback X11, donc pas besoin de XAUTHORITY
+export GDK_BACKEND=wayland
+export QT_QPA_PLATFORM=wayland
+
+# Garantir WAYLAND_DISPLAY (hérité de la session, mais sécurisé)
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-1}"
+
+# XAUTHORITY : si XWayland est quand même utilisé (GTK3 fallback),
+# générer un cookie MIT-MAGIC-COOKIE-1 pour le display courant
+if [ -n "$DISPLAY" ] && [ ! -s "${XAUTHORITY:-$HOME/.Xauthority}" ]; then
+    export XAUTHORITY="$HOME/.Xauthority"
+    xauth add "$DISPLAY" . "$(mcookie)" 2>/dev/null || true
+fi
+
+exec /usr/bin/virt-manager "$@"
