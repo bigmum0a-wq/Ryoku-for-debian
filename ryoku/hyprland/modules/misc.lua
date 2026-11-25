@@ -33,6 +33,14 @@ hl.config({
         -- so it morphs smoothly instead.
         animate_manual_resizes = true,
     },
+    cursor = {
+        -- Software cursor rendering prevents the hardware cursor plane from
+        -- disappearing for 1-2 minutes on Intel UHD 620 / Aquamarine during
+        -- WlSessionLock (qylock) or after DPMS output-off/output-on.
+        no_hardware_cursors = 1,
+        hide_on_touch = false,
+        hide_on_key_press = false,
+    },
     xwayland = {
         force_zero_scaling = true, -- XWayland (Chromium/Electron) crisp on HiDPI
         -- when an XWayland app is scaled by the compositor, nearest-neighbour
