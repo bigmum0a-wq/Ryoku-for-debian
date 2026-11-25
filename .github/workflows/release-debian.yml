@@ -45,13 +45,15 @@ jobs:
             libavformat-dev libavcodec-dev libavutil-dev libswscale-dev
 
       - name: Import GPG signing key (if configured)
-        if: ${{ secrets.RYOKU_GPG_PRIVATE_KEY != '' }}
         env:
           GPG_KEY: ${{ secrets.RYOKU_GPG_PRIVATE_KEY }}
-          GPG_PASS: ${{ secrets.RYOKU_GPG_PASSPHRASE }}
         run: |
-          printf '%s\n' "$GPG_KEY" | gpg --batch --import
-          echo "RYOKU_GPG_KEY=packaging@ryoku.dev" >> "$GITHUB_ENV"
+          if [ -n "$GPG_KEY" ]; then
+            printf '%s\n' "$GPG_KEY" | gpg --batch --import
+            echo "RYOKU_GPG_KEY=packaging@ryoku.dev" >> "$GITHUB_ENV"
+          else
+            echo "::notice::RYOKU_GPG_PRIVATE_KEY not set; building unsigned release"
+          fi
 
       - name: Build .deb packages & signed APT repository
         run: |
