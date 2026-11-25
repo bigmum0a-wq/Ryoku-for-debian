@@ -6,7 +6,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../../.." && pwd)
 
 OUT_DIR=${RYOKU_DEB_OUT:-$SCRIPT_DIR/out}
-PKGVER=${RYOKU_PKGVER:-1.2.1-1}
+PKGVER=${RYOKU_PKGVER:-1.2.2-1}
 SUITE=${RYOKU_DEB_SUITE:-trixie}
 ARCH=${RYOKU_DEB_ARCH:-amd64}
 CODENAME=$(tr -d '[:space:]' < "$REPO_ROOT/CODENAME" 2>/dev/null || echo "Amaterasu")
@@ -110,6 +110,9 @@ chmod 755 "$SHELL_DIR/usr/bin/ryogami"
 log "Building ryoku-hub"
 ( cd "$REPO_ROOT/ryoku/hub/backend" && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o "$SHELL_DIR/usr/bin/ryoku-hub" . )
 chmod 755 "$SHELL_DIR/usr/bin/ryoku-hub"
+if [ -f "$SHELL_DIR/usr/bin/ryoku-livewall" ] && [ ! -e "$SHELL_DIR/usr/bin/ryogami-live" ]; then
+  ln -sfn ryoku-livewall "$SHELL_DIR/usr/bin/ryogami-live"
+fi
 package_deb "ryoku-shell" "$ARCH" "quickshell, bash" \
   "Ryoku Desktop Shell IPC and supervision daemon" "$SHELL_DIR"
 
