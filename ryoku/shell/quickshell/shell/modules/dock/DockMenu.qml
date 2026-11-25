@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Effects
+import Quickshell
 import shell.services as Svc
 import Ryoku.Ui.Singletons
 import "../desktop"
@@ -26,6 +27,9 @@ Item {
         const r = [];
         r.push({ key: "open", icon: "launch", label: menu.count > 0 ? I18n.tr("New window") : I18n.tr("Open") });
         r.push({ key: "pin", icon: menu.pinned ? "keep_off" : "keep", label: menu.pinned ? I18n.tr("Unpin") : I18n.tr("Pin") });
+        r.push({ key: "replace", icon: "swap_horiz", label: I18n.tr("Changer d'application...") });
+        r.push({ key: "manage", icon: "apps", label: I18n.tr("Gérer le dock...") });
+        r.push({ key: "stash", icon: "layers", label: I18n.tr("Fenêtres rangées") });
         if (menu.count > 0)
             r.push({ key: "close", icon: "close", label: I18n.tr("Close") });
         return r;
@@ -33,15 +37,26 @@ Item {
 
     function close() { Svc.Dock.closeMenu(); }
     function act(key) {
+        const home = Quickshell.env("HOME") || "";
         if (key === "open")
             Svc.Dock.menuActOpen();
         else if (key === "pin")
             Svc.Dock.menuActPin();
-        else
+        else if (key === "replace") {
+            const target = Svc.Dock.menuClass || "";
+            Svc.Dock.closeMenu();
+            Quickshell.execDetached([home + "/.local/bin/ryoku-dock-picker", "--ui-replace", target]);
+        } else if (key === "manage") {
+            Svc.Dock.closeMenu();
+            Quickshell.execDetached([home + "/.local/bin/ryoku-dock-picker", "--ui-manage"]);
+        } else if (key === "stash") {
+            Svc.Dock.closeMenu();
+            Quickshell.execDetached([home + "/.local/bin/ryoku-winstash", "toggle-ui"]);
+        } else
             Svc.Dock.menuActClose();
     }
 
-    implicitWidth: 196
+    implicitWidth: 224
     implicitHeight: card.height
 
     // soft drop shadow: the menu genuinely floats over the desktop.
