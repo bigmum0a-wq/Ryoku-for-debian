@@ -105,3 +105,21 @@ hl.env("PATH", table.concat(entries, ":"))
 
 hl.env("EDITOR", "nvim")
 hl.env("VISUAL", "nvim")
+
+-- ── Hyprland startup warnings ─────────────────────────────────────────────
+-- Suppress the "not using start-hyprland" warning that Hyprland emits when
+-- argv[0] is not literally "start-hyprland" (which is the case when SDDM
+-- launches the session via the .desktop Exec path). The warning is cosmetic:
+-- the compositor runs correctly through /usr/bin/start-hyprland; we just
+-- don't want it cluttering the boot splash.
+hl.env("HYPRLAND_NO_SD_NOTIFY", "1")
+
+-- ── XWayland authority ────────────────────────────────────────────────────
+-- Hyprland starts Xwayland but does not export XAUTHORITY into the session
+-- environment. Without it, apps that escalate privileges (virt-manager,
+-- gparted, root-owned GUIs) cannot open their window on the X display and
+-- crash with "Authorization required, but no authorization protocol specified".
+-- ~/.Xauthority is the canonical location; xauth creates it automatically
+-- when the first XWayland client connects.
+local home = os.getenv("HOME") or ""
+hl.env("XAUTHORITY", home .. "/.Xauthority")

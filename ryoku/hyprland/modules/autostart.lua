@@ -4,6 +4,21 @@ hl.on("hyprland.start", function()
     -- might ask for a stored secret, and propagate env to systemd/D-Bus.
     hl.exec_cmd("systemctl --user start gnome-keyring-daemon.service 2>/dev/null || true")
     hl.exec_cmd("eval $(gnome-keyring-daemon --start --components=secrets,pkcs11 2>/dev/null) && dbus-update-activation-environment --systemd --all >/dev/null 2>&1 || true")
+    -- XWayland authority: Hyprland starts Xwayland but does not export XAUTHORITY.
+    -- Without a valid MIT-MAGIC-COOKIE in ~/.Xauthority, any app that escalates
+    -- privileges (virt-manager, gparted, polkit GUI agents) cannot connect to
+    -- the X display and crashes with "Authorization required".
+    -- We generate the cookie immediately after Xwayland starts (it listens on
+    -- the first free display, usually :0 under Hyprland). The XAUTHORITY env
+    -- var is set to ~/.Xauthority in env.lua so the whole session uses it.
+    hl.exec_cmd([[
+        # Find the actual Xwayland display number (may be :0, :1, etc.)
+        xdisp=$(ss -lxp 2>/dev/null | awk '/\.X[0-9]/{match($0,/\.X([0-9]+)/,a); print ":"a[1]; exit}')
+        xdisp="${xdisp:-:0}"
+        xauth generate "$xdisp" . trusted 2>/dev/null || true
+        # Propagate XAUTHORITY into systemd user env so polkit/dbus inherit it
+        systemctl --user import-environment XAUTHORITY DISPLAY 2>/dev/null || true
+    ]])
     hl.exec_cmd("ryoku-wm-hyprland act cursor.set Bibata-Modern-Ice 24")
     hl.exec_cmd("gsettings set org.gnome.desktop.interface color-scheme prefer-dark")
     -- adw-gtk3-dark, not Adwaita-dark: stock Adwaita GTK3 hardcodes its colours,

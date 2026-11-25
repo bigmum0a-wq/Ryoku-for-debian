@@ -5,7 +5,7 @@ hl.config({
         focus_on_activate = true,
         disable_hyprland_logo = true,
         disable_splash_rendering = true,
-        force_default_wallpaper = -1,
+        force_default_wallpaper = 0,
         -- Input is the compositor-native way out of DPMS. hypridle still runs
         -- the neutral output.power on action when its idle cycle resumes, but
         -- these keep a dead or late idle client from leaving the panel black.
@@ -19,6 +19,13 @@ hl.config({
         -- undock); suppress Hyprland's own "scale changed" popup so a rescale
         -- does not flash a raw toast over the shell's OSD.
         disable_scale_notification = true,
+        -- Suppress the XDG env check warning (managed externally by SDDM/uwsm)
+        -- and the hyprland-guiutils missing warning (not required by Ryoku).
+        -- The "not using start-hyprland" warning is suppressed via the
+        -- HYPRLAND_NO_SD_NOTIFY env var set in env.lua.
+        disable_xdg_env_checks = true,
+        disable_hyprland_guiutils_check = true,
+        disable_watchdog_warning = true,
         -- Super+A snaps a window to a centred float and back. Without this a
         -- dispatcher resize jumps in one frame, so the app re-lays-out mid-jump
         -- and its UI flickers; animating it lets Hyprland texture-scale the
