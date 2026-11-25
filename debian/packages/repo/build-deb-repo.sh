@@ -72,13 +72,12 @@ if command -v gpg >/dev/null 2>&1; then
   rm -f "$KEY_CAT"
 fi
 cat << 'EOF' > "$KEYRING_DIR/etc/apt/sources.list.d/ryoku.sources"
-# Ryoku Debian APT source (commented by default: upstream repo.ryoku.dev does not host Debian trixie).
-# Uncomment and set URIs to your own GitHub Pages / local APT repo mirror when published.
-# Types: deb
-# URIs: https://bigmum0a-wq.github.io/Ryoku-for-debian/apt
-# Suites: trixie
-# Components: main
-# Signed-By: /usr/share/keyrings/ryoku-archive-keyring.gpg
+# Ryoku Debian & Kali APT repository (GitHub Pages mirror)
+Types: deb
+URIs: https://bigmum0a-wq.github.io/Ryoku-for-debian/apt
+Suites: trixie
+Components: main
+Signed-By: /usr/share/keyrings/ryoku-archive-keyring.gpg
 EOF
 package_deb "ryoku-archive-keyring" "all" "gpg" \
   "GnuPG archive key and apt sources list for Ryoku Debian repository" "$KEYRING_DIR"
