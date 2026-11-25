@@ -6,7 +6,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/../../.." && pwd)
 
 OUT_DIR=${RYOKU_DEB_OUT:-$SCRIPT_DIR/out}
-PKGVER=${RYOKU_PKGVER:-1.2.0-1}
+PKGVER=${RYOKU_PKGVER:-1.2.1-1}
 SUITE=${RYOKU_DEB_SUITE:-trixie}
 ARCH=${RYOKU_DEB_ARCH:-amd64}
 CODENAME=$(tr -d '[:space:]' < "$REPO_ROOT/CODENAME" 2>/dev/null || echo "Amaterasu")
@@ -178,6 +178,10 @@ ln -sfn /usr/lib/qt6/qml/Ryoku "$DESKTOP_DIR/usr/lib/x86_64-linux-gnu/qt6/qml/Ry
 if [ -f "$REPO_ROOT/debian/packages/fonts/MaterialSymbolsRounded.ttf" ]; then
   install -Dm644 "$REPO_ROOT/debian/packages/fonts/MaterialSymbolsRounded.ttf" \
     "$DESKTOP_DIR/usr/share/fonts/truetype/ryoku/MaterialSymbolsRounded.ttf"
+fi
+if [ -f "$REPO_ROOT/debian/packages/bin/ryoku-apply-kde-theme" ]; then
+  install -Dm755 "$REPO_ROOT/debian/packages/bin/ryoku-apply-kde-theme" \
+    "$DESKTOP_DIR/usr/bin/ryoku-apply-kde-theme"
 fi
 package_deb "ryoku-desktop" "all" \
   "ryoku-cli (>= $PKGVER), ryoku-shell (>= $PKGVER), ryoku-palette-bridge (>= $PKGVER), ryoku-blobs (>= $PKGVER), ryoku-desktop-hyprland (>= $PKGVER), qml6-module-qtquick3d, wireplumber, pipewire, grim, slurp, wl-clipboard, tesseract-ocr, playerctl, cava, hyprpicker, hyprsunset, hypridle, ffmpeg, mpv, jq, socat" \

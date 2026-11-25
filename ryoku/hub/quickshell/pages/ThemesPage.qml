@@ -18,6 +18,10 @@ Item {
     readonly property string pBlurb: I18n.tr("Switch color schemes, dynamic wallpaper palette mode, and window surface styling.")
 
     property var catalogSchemes: ThemeCatalog.schemes
+    property var kdeGlobalThemes: []
+    property var kdeColorSchemes: []
+    property string activeKdeGlobal: ""
+    property string activeKdeColor: ""
     readonly property string activeTheme: {
         Settings.revision;
         var t = Settings.get("theme.theme");
@@ -69,6 +73,49 @@ Item {
                     if (Array.isArray(parsed) && parsed.length > 0)
                         pg.catalogSchemes = parsed;
                 } catch (e) {}
+            }
+        }
+    }
+
+    Process {
+        id: kdeThemesProc
+        command: ["sh", "-c", "lookandfeeltool --list 2>/dev/null; echo '---CURRENT---'; kreadconfig6 --file kdeglobals --group KDE --key LookAndFeelPackage 2>/dev/null"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var parts = this.text.split("---CURRENT---");
+                var lines = (parts[0] || "").trim().split("\n");
+                var list = [];
+                for (var i = 0; i < lines.length; i++) {
+                    var s = lines[i].trim();
+                    if (s.length > 0 && s.indexOf(" ") === -1)
+                        list.push(s);
+                }
+                pg.kdeGlobalThemes = list;
+                if (parts.length > 1)
+                    pg.activeKdeGlobal = parts[1].trim();
+            }
+        }
+    }
+
+    Process {
+        id: kdeColorsProc
+        command: ["sh", "-c", "plasma-apply-colorscheme --list-schemes 2>/dev/null"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var lines = this.text.trim().split("\n");
+                var list = [];
+                for (var i = 0; i < lines.length; i++) {
+                    var m = lines[i].match(/^\s*\*\s+(.+?)(\s+\(current.*\))?$/);
+                    if (m) {
+                        var name = m[1].trim();
+                        list.push(name);
+                        if (m[2])
+                            pg.activeKdeColor = name;
+                    }
+                }
+                pg.kdeColorSchemes = list;
             }
         }
     }
@@ -336,6 +383,125 @@ Item {
                         from: 0; to: 24
                         value: pg.widgetRadius
                         onModified: (v) => Settings.patch("theme.attributes.sizing.radius_widget", Math.round(v))
+                    }
+                }
+            }
+
+            SettingCard {
+                width: parent.width
+                title: I18n.tr("KDE & QT BRIDGE")
+
+                SettingRow {
+                    anchors.left: parent.left; anchors.right: parent.right
+                    divider: true
+                    label: I18n.tr("Sync Ryoku palette to KDE/Qt")
+                    desc: I18n.tr("Generate RyokuDynamic color scheme and apply org.ryoku.desktop to Qt/KDE apps.")
+                    controlWidth: 160
+                    Rectangle {
+                        anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                        width: 150; height: 28; radius: Tokens.rSm
+                        color: syncKdeHover.hovered ? Tokens.tint10 : Tokens.surface2
+                        border.width: 1; border.color: Tokens.lineSoft
+                        HoverHandler { id: syncKdeHover }
+                        TapHandler {
+                            onTapped: {
+                                Quickshell.execDetached(["sh", "-c", "\"$HOME/.local/bin/ryoku-apply-kde-theme\""]);
+                                pg.activeKdeGlobal = "org.ryoku.desktop";
+                                pg.activeKdeColor = "RyokuDynamic";
+                            }
+                        }
+                        Text {
+                            anchors.centerIn: parent
+                            text: I18n.tr("Sync Ryoku → KDE")
+                            color: Tokens.ink
+                            font.family: Tokens.ui; font.pixelSize: Tokens.fSmall
+                        }
+                    }
+                }
+
+                SettingRow {
+                    anchors.left: parent.left; anchors.right: parent.right
+                    divider: true
+                    label: I18n.tr("KDE Global Theme (Look & Feel)")
+                    desc: pg.activeKdeGlobal.length > 0 ? I18n.tr("Active: ") + pg.activeKdeGlobal : I18n.tr("Apply a KDE Look & Feel package.")
+                    controlWidth: 0
+                }
+
+                Flow {
+                    width: parent.width - Tokens.s4 * 2
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: Tokens.s2
+                    topPadding: Tokens.s2
+                    bottomPadding: Tokens.s3
+
+                    Repeater {
+                        model: pg.kdeGlobalThemes
+                        delegate: Rectangle {
+                            id: lafChip
+                            required property string modelData
+                            readonly property bool active: pg.activeKdeGlobal === modelData
+                            width: lafTxt.implicitWidth + 20; height: 28; radius: Tokens.rSm
+                            color: active ? Tokens.bone : (lafHover.hovered ? Tokens.tint10 : Tokens.surface2)
+                            border.width: 1
+                            border.color: active ? Tokens.bone : Tokens.lineSoft
+                            HoverHandler { id: lafHover }
+                            TapHandler {
+                                onTapped: {
+                                    pg.activeKdeGlobal = lafChip.modelData;
+                                    Quickshell.execDetached(["lookandfeeltool", "--apply", lafChip.modelData]);
+                                }
+                            }
+                            Text {
+                                id: lafTxt
+                                anchors.centerIn: parent
+                                text: lafChip.modelData
+                                color: lafChip.active ? Tokens.inkOnBone : Tokens.ink
+                                font.family: Tokens.ui; font.pixelSize: Tokens.fSmall
+                            }
+                        }
+                    }
+                }
+
+                SettingRow {
+                    anchors.left: parent.left; anchors.right: parent.right
+                    divider: true
+                    label: I18n.tr("KDE Color Scheme")
+                    desc: pg.activeKdeColor.length > 0 ? I18n.tr("Active: ") + pg.activeKdeColor : I18n.tr("Apply a KDE .colors scheme to Qt/KDE apps.")
+                    controlWidth: 0
+                }
+
+                Flow {
+                    width: parent.width - Tokens.s4 * 2
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: Tokens.s2
+                    topPadding: Tokens.s2
+                    bottomPadding: Tokens.s4
+
+                    Repeater {
+                        model: pg.kdeColorSchemes
+                        delegate: Rectangle {
+                            id: csChip
+                            required property string modelData
+                            readonly property bool active: pg.activeKdeColor === modelData
+                            width: csTxt.implicitWidth + 20; height: 28; radius: Tokens.rSm
+                            color: active ? Tokens.bone : (csHover.hovered ? Tokens.tint10 : Tokens.surface2)
+                            border.width: 1
+                            border.color: active ? Tokens.bone : Tokens.lineSoft
+                            HoverHandler { id: csHover }
+                            TapHandler {
+                                onTapped: {
+                                    pg.activeKdeColor = csChip.modelData;
+                                    Quickshell.execDetached(["plasma-apply-colorscheme", csChip.modelData]);
+                                }
+                            }
+                            Text {
+                                id: csTxt
+                                anchors.centerIn: parent
+                                text: csChip.modelData
+                                color: csChip.active ? Tokens.inkOnBone : Tokens.ink
+                                font.family: Tokens.ui; font.pixelSize: Tokens.fSmall
+                            }
+                        }
                     }
                 }
             }

@@ -1,336 +1,274 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Shapes
-import inir.services
+import QtQuick.Layouts
+import Quickshell.Io
 import inir.modules.common.functions
 import inir.modules.iris.style
-import inir.modules.iris.bar.island
+import inir.services
 import Ryoku.Ui.Singletons
 
+// KDE-style analytical System Monitor widget: two side-by-side cards
+// (Left: CPU & RAM vertical bar charts; Right: Wi-Fi speed vertical bar chart).
+// Uses the built-in ResourceUsage singleton for CPU/RAM (reliable, already polled).
+// Wi-Fi speed is read directly from /proc/net/dev every 1 s.
 IrisWidgetFace {
     id: root
 
-    readonly property var resources: Array.from(root.widget._resourceModel ?? [])
-    readonly property var loads: root.resources.filter(entry => ["cpu", "mem", "gpu"].includes(entry.key))
-    readonly property var heats: root.resources.filter(entry => ["temp", "gpuTemp"].includes(entry.key))
-    readonly property bool hasDisk: root.resources.some(entry => entry.key === "disk")
-    readonly property bool diskAlone: root.hasDisk && root.resources.length === 1
-    readonly property real contentHeight: Math.floor(Math.max(0, root.height - root.padding * 2))
-    readonly property real sectionGap: root.dp(root.small ? 8 : 14)
-    readonly property real heatHeight: root.dp(root.small ? 24 : root.medium ? 28 : 66)
-    readonly property real diskHeight: root.dp(root.small ? 23 : root.medium ? 25 : 36)
-    readonly property real loadHeight: root.contentHeight
-        - (root.heats.length ? root.heatHeight + root.sectionGap : 0)
-        - (root.hasDisk ? root.diskHeight + root.sectionGap : 0)
-    readonly property real orbitSize: root.medium ? Math.min(root.contentHeight, root.dp(126))
-        : Math.round(Math.min(root.loadHeight, root.contentWidth * (root.small ? 0.54 : 0.61)))
+    implicitWidth:  root.dp(380)
+    implicitHeight: root.dp(168)
 
-    function level(key: string): real {
-        return Math.max(0, Math.min(1, Number(root.widget._getValue(key)) || 0))
-    }
-    // The widget accents (Settings › Widgets › Accents): processor the first, memory the second,
-    // graphics the third; each heat takes its chip's hue.
-    function tint(key: string): color {
-        if (root.level(key) >= 0.85)
-            return root.danger
-        return key === "cpu" || key === "temp" ? root.accent
-            : key === "mem" ? root.accent2
-            : key === "gpu" || key === "gpuTemp" ? root.highlight : root.inkSecondary
-    }
-    function name(entry: var): string {
-        return entry.key === "temp" ? Translation.tr("CPU heat")
-            : entry.key === "gpuTemp" ? Translation.tr("GPU heat")
-            : entry.key === "mem" ? Translation.tr("Memory")
-            : entry.key === "cpu" ? Translation.tr("Processor")
-            : entry.key === "gpu" ? Translation.tr("Graphics") : entry.label
-    }
-    function figure(key: string): string {
-        return String(root.widget._getDisplayText(key)).replace(/[%°C]/g, "")
-    }
-    function unit(key: string): string {
-        return key === "temp" || key === "gpuTemp" ? "°C" : "%"
-    }
-    function history(key: string): var {
-        const values = key === "cpu" ? ResourceUsage.cpuUsageHistory
-            : key === "mem" ? ResourceUsage.memoryUsageHistory
-            : key === "gpu" ? ResourceUsage.gpuUsageHistory
-            : key === "temp" ? ResourceUsage.cpuTempHistory
-            : key === "gpuTemp" ? ResourceUsage.gpuTempHistory : []
-        return Array.from(values ?? []).slice(-40)
-    }
+    readonly property int maxSamples: 18
 
-    component Reading: Row {
-        id: reading
-        required property string key
-        property real figureSize: 24
-        property color ink: root.tint(reading.key)
-        spacing: root.dp(1)
+    // ── CPU / RAM from ResourceUsage singleton ─────────────────────────────
+    readonly property real cpuPct: ResourceUsage.cpuUsage           // 0..1
+    readonly property real ramPct: ResourceUsage.memoryUsedPercentage // 0..1
+    readonly property real ramUsedGb: ResourceUsage.memoryUsed / (1024 * 1024)
+    readonly property real ramTotalGb: ResourceUsage.memoryTotal   / (1024 * 1024)
 
-        FaceFigure {
-            id: number
-            face: root
-            text: root.figure(reading.key)
-            size: reading.figureSize
-            color: reading.ink
+    // Keep the service alive while the widget is live
+    property bool _holding: false
+    function _syncHold() {
+        if (root.live && !root._holding) {
+            ResourceUsage.keepAlive();
+            root._holding = true;
+        } else if (!root.live && root._holding) {
+            ResourceUsage.releaseKeepAlive();
+            root._holding = false;
         }
-        FaceText {
-            face: root
-            text: root.unit(reading.key)
-            size: Math.max(8, reading.figureSize * 0.45)
-            color: reading.ink
-            y: Math.round(number.baselineOffset - baselineOffset)
+    }
+    onLiveChanged: root._syncHold()
+    Component.onCompleted: root._syncHold()
+    Component.onDestruction: { if (root._holding) ResourceUsage.releaseKeepAlive(); }
+
+    // Push CPU / RAM history every time the service emits a new value
+    property var cpuHistory: Array(root.maxSamples).fill(0)
+    property var ramHistory: Array(root.maxSamples).fill(0)
+
+    function _push(arr, val) {
+        var n = arr.slice(1);
+        n.push(Math.max(0, Math.min(1, val)));
+        return n;
+    }
+
+    Connections {
+        target: ResourceUsage
+        function onCpuUsageChanged() {
+            root.cpuHistory = root._push(root.cpuHistory, root.cpuPct);
+        }
+        function onMemoryUsedPercentageChanged() {
+            root.ramHistory = root._push(root.ramHistory, root.ramPct);
         }
     }
 
-    // A trend, not a level: the line spans its own recent range (at least 10 points of it), so a steady
-    // 38 °C reads as a calm line in the middle instead of a flat stroke on the floor.
-    component Trace: Shape {
-        id: trace
-        required property string key
-        readonly property var samples: root.history(trace.key).map(value => Math.max(0, Math.min(1, Number(value) || 0)))
-        readonly property real low: Math.min(...trace.samples)
-        readonly property real high: Math.max(...trace.samples)
-        readonly property real span: Math.max(0.10, trace.high - trace.low)
-        readonly property real base: (trace.low + trace.high) / 2 - trace.span / 2
-        readonly property var line: trace.samples.map((value, i) => Qt.point(
-            trace.width * i / Math.max(1, trace.samples.length - 1),
-            trace.height - 1 - (value - trace.base) / trace.span * (trace.height - 2)))
-        visible: trace.samples.length >= 2
-        preferredRendererType: Shape.CurveRenderer
+    // ── Wi-Fi from /proc/net/dev ───────────────────────────────────────────
+    property string netIface: "Wi-Fi"
+    property real   rxKbps:   0
+    property real   txKbps:   0
+    property var    netHistory: Array(root.maxSamples).fill(0)
 
-        ShapePath {
-            strokeColor: "transparent"
-            fillGradient: LinearGradient {
-                x1: 0; y1: 0; x2: 0; y2: trace.height
-                GradientStop { position: 0; color: IrisStyle.tintFill(root.tint(trace.key)) }
-                GradientStop { position: 1; color: ColorUtils.applyAlpha(root.tint(trace.key), 0) }
+    property double _prevRx: -1
+    property double _prevTx: -1
+    property double _prevTs: 0
+
+    Process {
+        id: netProc
+        command: ["sh", "-c",
+            "awk 'NR>2 && $1 !~ /^lo:/{gsub(\":\",\"\",$1); print $1, $2, $10}' /proc/net/dev"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var lines = this.text.trim().split("\n");
+                var bestIface = "", rx = 0, tx = 0;
+                for (var i = 0; i < lines.length; i++) {
+                    var p = lines[i].trim().split(/\s+/);
+                    if (p.length < 3) continue;
+                    var name = p[0];
+                    var r = parseFloat(p[1]) || 0;
+                    var t = parseFloat(p[2]) || 0;
+                    if (name.indexOf("wl") === 0) {
+                        bestIface = name; rx = r; tx = t;
+                    } else if (bestIface === "" && (r > 0 || t > 0)) {
+                        bestIface = name; rx = r; tx = t;
+                    }
+                }
+                if (bestIface !== "") {
+                    root.netIface = bestIface;
+                    var now = Date.now();
+                    if (root._prevRx >= 0 && root._prevTs > 0) {
+                        var dt = Math.max(0.2, (now - root._prevTs) / 1000.0);
+                        root.rxKbps = Math.max(0, (rx - root._prevRx) / 1024.0 / dt);
+                        root.txKbps = Math.max(0, (tx - root._prevTx) / 1024.0 / dt);
+                        var ratio = Math.min(1.0, (root.rxKbps + root.txKbps) / 5120.0);
+                        root.netHistory = root._push(root.netHistory, ratio);
+                    }
+                    root._prevRx = rx;
+                    root._prevTx = tx;
+                    root._prevTs = now;
+                }
             }
-            PathPolyline { path: [Qt.point(0, trace.height)].concat(trace.line, [Qt.point(trace.width, trace.height)]) }
-        }
-        ShapePath {
-            strokeColor: root.tint(trace.key)
-            strokeWidth: root.dp(1.5)
-            joinStyle: ShapePath.RoundJoin
-            capStyle: ShapePath.RoundCap
-            fillColor: "transparent"
-            PathPolyline { path: trace.line }
         }
     }
 
-    component Dot: Rectangle {
-        required property string key
-        implicitWidth: root.dp(root.small ? 6 : 8)
-        implicitHeight: implicitWidth
-        radius: width / 2
-        color: root.tint(key)
+    Timer {
+        interval: 1000
+        repeat:   true
+        running:  root.live
+        onTriggered: { if (!netProc.running) netProc.running = true; }
     }
 
-    component Orbits: Item {
-        id: orbits
-        readonly property real stroke: width * (root.loads.length === 1 ? 0.105 : 0.085)
-        readonly property real step: orbits.stroke * 1.4
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function fmtSpeed(kbps) {
+        if (kbps >= 1024) return (kbps / 1024).toFixed(1) + " MB/s";
+        return Math.round(kbps) + " KB/s";
+    }
 
-        Repeater {
-            model: root.loads
-            ProgressRing {
-                required property var modelData
-                required property int index
-                anchors.centerIn: parent
-                width: orbits.width - index * orbits.step * 2
-                height: width
-                stroke: orbits.stroke
-                progress: root.level(modelData.key)
-                tint: root.tint(modelData.key)
-                Behavior on progress {
-                    // Motion off snaps; behind windows the readings hold anyway.
-                    enabled: root.widget.animationsActive
-                    NumberAnimation {
-                        duration: IrisStyle.moveDuration
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: IrisStyle.moveCurve
+    function barColor(pct, base) {
+        return pct >= 0.85 ? root.danger : base;
+    }
+
+    // ── Reusable bar-chart component ──────────────────────────────────────
+    component MiniBarChart: ColumnLayout {
+        id: chart
+        required property string label
+        required property string readout
+        required property var    history
+        required property color  fillColor
+        property  real   barHeight: 32
+
+        Layout.fillWidth: true
+        spacing: root.dp(3)
+
+        RowLayout {
+            Layout.fillWidth: true
+            Text {
+                text: chart.label
+                font.pixelSize: root.dp(11)
+                font.weight: Font.DemiBold
+                color: root.ink
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+            }
+            Text {
+                text: chart.readout
+                font.pixelSize: root.dp(10)
+                color: chart.fillColor
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: root.dp(chart.barHeight)
+            radius: root.dp(4)
+            color: Qt.rgba(root.ink.r, root.ink.g, root.ink.b, 0.08)
+
+            Row {
+                anchors.fill:    parent
+                anchors.margins: root.dp(3)
+                spacing:         root.dp(2)
+
+                Repeater {
+                    model: root.maxSamples
+                    delegate: Item {
+                        required property int index
+                        width:  (parent.width - (root.maxSamples - 1) * root.dp(2)) / root.maxSamples
+                        height: parent.height
+
+                        readonly property real sample: (chart.history && index < chart.history.length)
+                            ? Math.max(0.06, Number(chart.history[index]) || 0) : 0.06
+
+                        Rectangle {
+                            anchors.bottom: parent.bottom
+                            anchors.left:   parent.left
+                            anchors.right:  parent.right
+                            height:  Math.max(root.dp(2), Math.round(parent.height * parent.sample))
+                            radius:  root.dp(1.5)
+                            color:   chart.fillColor
+                            opacity: 0.45 + 0.55 * (index / (root.maxSamples - 1))
+                        }
                     }
                 }
             }
         }
     }
 
-    // Small: dot, name, figure on one line. Medium: figure over dot and name. Large: a legend row
-    // for its ring, name at the start and the figure at the end, all on one baseline.
-    component LoadReading: Item {
-        id: load
-        required property var entry
-        property real figureSize: root.small ? 16 : root.medium ? 25 : 30
-        readonly property bool inline: root.small || root.large
-        implicitHeight: load.inline ? Math.max(value.height, label.height) : value.height + label.height + root.dp(2)
+    // ── Layout: two side-by-side cards ───────────────────────────────────
+    RowLayout {
+        anchors.fill:    parent
+        anchors.margins: root.padding
+        spacing:         root.dp(8)
 
-        Item {
-            anchors.verticalCenter: parent.verticalCenter
-            width: parent.width
-            height: load.implicitHeight
-            Reading {
-                id: value
-                key: load.entry.key
-                figureSize: load.figureSize
-                x: load.inline ? parent.width - width : 0
-            }
-            Dot {
-                id: dot
-                key: load.entry.key
-                x: 0
-                y: load.inline ? Math.round((value.height - height) / 2) : Math.round(value.height + root.dp(2) + (label.height - height) / 2)
-            }
-            FaceText {
-                id: label
-                face: root
-                visible: root.widget.showLabels
-                x: dot.width + root.dp(root.small ? 4 : 6)
-                width: load.inline ? Math.max(0, value.x - x - root.dp(4)) : parent.width - x
-                text: I18n.tr(load.entry.label)
-                size: root.small ? 9 : root.large ? 13 : 11
-                weight: root.large ? Font.DemiBold : Font.Medium
-                color: root.large ? root.ink : root.inkSecondary
-                y: load.inline ? Math.round((value.height - height) / 2) : value.height + root.dp(2)
-            }
-        }
-    }
-
-    component HeatReadings: Row {
-        id: temperatures
-        spacing: root.dp(root.small ? 8 : 18)
-
-        Repeater {
-            model: root.heats
-            Item {
-                id: heat
-                required property var modelData
-                width: Math.floor((temperatures.width - temperatures.spacing * (root.heats.length - 1)) / Math.max(1, root.heats.length))
-                height: temperatures.height
-                readonly property bool expanded: root.large || root.loads.length === 0
-
-                FaceText {
-                    id: label
-                    face: root
-                    visible: root.widget.showLabels
-                    width: parent.width
-                    text: heat.expanded ? root.name(heat.modelData) : I18n.tr(heat.modelData.label)
-                    size: root.small ? 9 : 11
-                    color: root.inkSecondary
-                }
-                Reading {
-                    id: heatValue
-                    key: heat.modelData.key
-                    x: heat.expanded ? 0 : heat.width - width
-                    y: heat.expanded ? (label.visible ? label.height + root.dp(2) : 0) : label.height - height
-                    figureSize: heat.expanded ? (root.small ? 24 : 28) : root.small ? 14 : 18
-                    ink: root.level(key) >= 0.85 ? root.danger : root.ink
-                }
-                Trace {
-                    visible: root.large && samples.length >= 2
-                    key: heat.modelData.key
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: root.dp(14)
-                }
-            }
-        }
-    }
-
-    component Capacity: Item {
-        id: capacity
-        readonly property real trackHeight: root.dp(root.diskAlone ? 12 : root.small ? 5 : 7)
-
-        FaceText {
-            face: root
-            visible: root.widget.showLabels
-            text: Translation.tr("Disk")
-            size: root.small ? 9 : 11
-            color: root.inkSecondary
-        }
-        Reading {
-            key: "disk"
-            anchors.right: parent.right
-            figureSize: root.diskAlone ? 42 : root.small ? 13 : root.medium ? 15 : 21
-            ink: root.level(key) >= 0.85 ? root.danger : root.ink
-        }
+        // Left card: CPU + RAM
         Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            height: capacity.trackHeight
-            radius: height / 2
-            color: root.fill
-            Rectangle {
-                width: parent.width * root.level("disk")
-                height: parent.height
-                radius: height / 2
-                color: root.tint("disk")
-            }
-        }
-    }
+            Layout.fillWidth:  true
+            Layout.fillHeight: true
+            radius:            root.dp(8)
+            color:             Qt.rgba(root.ink.r, root.ink.g, root.ink.b, 0.05)
+            border.width:      1
+            border.color:      Qt.rgba(root.ink.r, root.ink.g, root.ink.b, 0.10)
 
-    FaceText {
-        face: root
-        visible: root.resources.length === 0
-        anchors.centerIn: parent
-        text: Translation.tr("Choose what to watch")
-        color: root.inkTertiary
-        size: 12.5
-    }
+            ColumnLayout {
+                anchors.fill:    parent
+                anchors.margins: root.dp(8)
+                spacing:         root.dp(6)
 
-    Item {
-        id: composition
-        anchors.fill: parent
-        visible: root.resources.length > 0
-        readonly property real detailsX: root.medium && root.loads.length ? root.orbitSize + root.dp(20) : 0
-        readonly property real detailsWidth: width - detailsX
+                MiniBarChart {
+                    label:     "CPU"
+                    readout:   Math.round(root.cpuPct * 100) + "%"
+                    history:   root.cpuHistory
+                    fillColor: root.barColor(root.cpuPct, root.accent)
+                    barHeight: 34
+                }
 
-        Orbits {
-            visible: root.loads.length > 0
-            width: root.orbitSize
-            height: width
-            y: Math.round(root.medium ? (composition.height - height) / 2 : (root.loadHeight - height) / 2)
-        }
-
-        Grid {
-            id: loadValues
-            visible: root.loads.length > 0
-            x: root.medium ? composition.detailsX : root.orbitSize + root.dp(root.small ? 8 : 22)
-            y: root.medium ? 0 : Math.round((root.loadHeight - height) / 2)
-            width: composition.width - x
-            columns: root.medium ? Math.max(1, root.loads.length) : 1
-            spacing: root.dp(root.small ? 2 : root.large ? 12 : 5)
-
-            Repeater {
-                model: root.loads
-                LoadReading {
-                    required property var modelData
-                    entry: modelData
-                    width: Math.floor((loadValues.width - (loadValues.columns - 1) * loadValues.spacing) / loadValues.columns)
-                    height: root.small && root.loads.length > 1
-                        ? Math.floor(root.loadHeight / root.loads.length - loadValues.spacing)
-                        : implicitHeight
-                    figureSize: root.small ? 16 : root.medium ? 25 : 24
+                MiniBarChart {
+                    label:     "RAM"
+                    readout:   Math.round(root.ramPct * 100) + "% (" + root.ramUsedGb.toFixed(1) + "G)"
+                    history:   root.ramHistory
+                    fillColor: root.barColor(root.ramPct, root.accent2)
+                    barHeight: 34
                 }
             }
         }
 
-        HeatReadings {
-            visible: root.heats.length > 0
-            x: composition.detailsX
-            width: composition.detailsWidth
-            height: root.loads.length ? root.heatHeight : Math.max(root.heatHeight, root.contentHeight * 0.45)
-            y: root.loads.length ? root.loadHeight + root.sectionGap
-                : Math.round((root.contentHeight - height - (root.hasDisk ? root.diskHeight + root.sectionGap : 0)) / 2)
-        }
+        // Right card: Wi-Fi
+        Rectangle {
+            Layout.fillWidth:  true
+            Layout.fillHeight: true
+            radius:            root.dp(8)
+            color:             Qt.rgba(root.ink.r, root.ink.g, root.ink.b, 0.05)
+            border.width:      1
+            border.color:      Qt.rgba(root.ink.r, root.ink.g, root.ink.b, 0.10)
 
-        Capacity {
-            visible: root.hasDisk
-            x: composition.detailsX
-            width: composition.detailsWidth
-            height: root.diskAlone ? root.dp(80) : root.diskHeight
-            y: root.diskAlone ? Math.round((composition.height - height) / 2) : composition.height - height
+            ColumnLayout {
+                anchors.fill:    parent
+                anchors.margins: root.dp(8)
+                spacing:         root.dp(6)
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text {
+                        text:              "Wi-Fi"
+                        font.pixelSize:    root.dp(11)
+                        font.weight:       Font.DemiBold
+                        color:             root.ink
+                        Layout.fillWidth:  true
+                        elide:             Text.ElideRight
+                    }
+                    Text {
+                        text:           root.netIface
+                        font.pixelSize: root.dp(10)
+                        color:          root.inkSecondary
+                    }
+                }
+
+                MiniBarChart {
+                    label:     "↓ " + root.fmtSpeed(root.rxKbps)
+                    readout:   "↑ " + root.fmtSpeed(root.txKbps)
+                    history:   root.netHistory
+                    fillColor: root.highlight
+                    barHeight: 74
+                }
+            }
         }
     }
 }

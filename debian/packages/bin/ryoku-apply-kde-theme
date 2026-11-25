@@ -1,0 +1,356 @@
+#!/usr/bin/env python3
+"""
+ryoku-apply-kde-theme
+─────────────────────
+Génère ~/.local/share/color-schemes/RyokuDynamic.colors depuis
+~/.cache/ryoku/kdeglobals-colors.conf (produit par matugen au changement
+de wallpaper/thème), applique le schéma KDE, puis crée/applique le
+Look-and-Feel package org.ryoku.desktop.
+
+Usage : ryoku-apply-kde-theme [--no-apply]
+  --no-apply   Génère les fichiers seulement, sans appeler plasma-apply-*.
+"""
+
+import os, sys, re, subprocess, json, textwrap, shutil
+
+HOME      = os.path.expanduser("~")
+SRC_KDE   = HOME + "/.cache/ryoku/kdeglobals-colors.conf"
+SRC_JSON  = HOME + "/.cache/ryoku/colors.json"
+DST_COLOR = HOME + "/.local/share/color-schemes/RyokuDynamic.colors"
+LAF_DIR   = HOME + "/.local/share/plasma/look-and-feel/org.ryoku.desktop"
+APPLY     = "--no-apply" not in sys.argv
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+
+def hex_to_rgb(h: str) -> str:
+    """'#RRGGBB' → 'R,G,B' (format KDE)"""
+    h = h.lstrip('#')
+    return f"{int(h[0:2],16)},{int(h[2:4],16)},{int(h[4:6],16)}"
+
+def parse_kde_ini(path: str) -> dict:
+    """
+    Lit un fichier INI-style KDE.
+    Les valeurs de couleur commencent par '#' — on ne les traite pas
+    comme des commentaires.
+    """
+    sections: dict = {}
+    cur = None
+    with open(path, encoding='utf-8') as f:
+        for line in f:
+            s = line.strip()
+            # Ligne vide ou commentaire pur (commence par #)
+            if not s or s.startswith('#'):
+                continue
+            # En-tête de section  [Foo:Bar]
+            m = re.match(r'^\[(.+)\]$', s)
+            if m:
+                cur = m.group(1)
+                sections.setdefault(cur, {})
+                continue
+            # Clé=Valeur
+            if '=' in s and cur is not None:
+                k, _, v = s.partition('=')
+                k = k.strip()
+                v = v.strip()
+                # Enlever les commentaires en fin de ligne SEULEMENT si le
+                # commentaire n'est pas au début de la valeur (cas #RRGGBB)
+                if not v.startswith('#'):
+                    v = v.split('#')[0].strip()
+                sections[cur][k] = v
+    return sections
+
+# ── 1. Générer RyokuDynamic.colors ────────────────────────────────────────
+
+def build_colors_file():
+    if not os.path.exists(SRC_KDE):
+        print(f"[ryoku-kde] ⚠ Source manquante: {SRC_KDE}", file=sys.stderr)
+        sys.exit(1)
+
+    secs = parse_kde_ini(SRC_KDE)
+
+    lines = []
+    lines += [
+        "[General]",
+        "ColorScheme=RyokuDynamic",
+        "Name=Ryoku Dynamic",
+        "shadeSortColumn=true",
+        "",
+        "[ColorEffects:Disabled]",
+        "Color=56,56,56",
+        "ColorAmount=0",
+        "ColorEffect=0",
+        "ContrastAmount=0.65",
+        "ContrastEffect=1",
+        "IntensityAmount=0.1",
+        "IntensityEffect=2",
+        "",
+        "[ColorEffects:Inactive]",
+        "ChangeSelectionColor=true",
+        "Color=112,111,110",
+        "ColorAmount=0.025",
+        "ColorEffect=2",
+        "ContrastAmount=0.1",
+        "ContrastEffect=2",
+        "Enable=false",
+        "IntensityAmount=0",
+        "IntensityEffect=0",
+        "",
+    ]
+
+    # Sections de couleurs dans l'ordre KDE attendu
+    for sec in [
+        "Colors:View", "Colors:Window", "Colors:Button",
+        "Colors:Selection", "Colors:Tooltip", "Colors:Complementary",
+        "Colors:Header", "Colors:Header][Inactive", "WM",
+    ]:
+        data = secs.get(sec)
+        if not data:
+            continue
+        lines.append(f"[{sec}]")
+        for k, v in data.items():
+            # Convertir #RRGGBB → R,G,B
+            if re.match(r'^#[0-9A-Fa-f]{6}$', v):
+                v = hex_to_rgb(v)
+            lines.append(f"{k}={v}")
+        lines.append("")
+
+    os.makedirs(os.path.dirname(DST_COLOR), exist_ok=True)
+    with open(DST_COLOR, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines))
+    print(f"[ryoku-kde] ✓ Color scheme écrit : {DST_COLOR}")
+
+# ── 2. Créer le Look-and-Feel package org.ryoku.desktop ───────────────────
+
+def build_laf_package():
+    """Crée le paquetage Look-and-Feel KDE minimal."""
+    contents = LAF_DIR + "/contents"
+    previews = contents + "/previews"
+    os.makedirs(contents, exist_ok=True)
+    os.makedirs(previews, exist_ok=True)
+
+    # metadata.json
+    meta = {
+        "KPackageStructure": "Plasma/LookAndFeel",
+        "KPlugin": {
+            "Authors": [{"Email": "ryoku@localhost", "Name": "Ryoku"}],
+            "Description": "Ryoku dynamic color theme for KDE apps",
+            "Id": "org.ryoku.desktop",
+            "License": "GPL-3.0",
+            "Name": "Ryoku",
+            "Version": "1.0",
+        }
+    }
+    with open(LAF_DIR + "/metadata.json", 'w') as f:
+        json.dump(meta, f, indent=2)
+
+    # defaults — pointe vers notre schéma dynamique
+    # Lire le thème d'icônes actuel depuis kdeglobals
+    icon_theme = "breeze-dark"
+    try:
+        result = subprocess.run(
+            ["kreadconfig6", "--file", "kdeglobals", "--group", "Icons", "--key", "Theme"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            icon_theme = result.stdout.strip()
+    except Exception:
+        pass
+
+    kv_available = bool(
+        shutil.which("kvantummanager")
+        and os.path.isdir("/usr/share/Kvantum/KvArcDark")
+        and os.path.exists(SRC_JSON)
+    )
+    widget_style = "kvantum" if kv_available else "Breeze"
+
+    defaults = textwrap.dedent(f"""\
+        [kdeglobals][KDE]
+        widgetStyle={widget_style}
+
+        [kdeglobals][General]
+        ColorScheme=RyokuDynamic
+
+        [kdeglobals][Icons]
+        Theme={icon_theme}
+
+        [kcminputrc][Mouse]
+        cursorTheme=Bibata-Modern-Ice
+    """)
+    with open(contents + "/defaults", 'w') as f:
+        f.write(defaults)
+
+    print(f"[ryoku-kde] ✓ Look-and-Feel package créé : {LAF_DIR}")
+
+# ── 2b. Générer le thème Kvantum RyokuDynamic ─────────────────────────────
+
+def build_kvantum_theme() -> bool:
+    """Crée ~/.config/Kvantum/RyokuDynamic à partir de KvArcDark + colors.json."""
+    src_dir = "/usr/share/Kvantum/KvArcDark"
+    if not (os.path.isdir(src_dir) and os.path.exists(SRC_JSON)):
+        return False
+
+    with open(SRC_JSON, encoding="utf-8") as f:
+        pal = json.load(f)
+
+    def c(key: str, fallback: str) -> str:
+        val = pal.get(key, fallback)
+        return val if isinstance(val, str) and val.startswith("#") else fallback
+
+    surface      = c("surface", "#141318")
+    surf_lowest  = c("surfaceContainerLowest", "#0e0d13")
+    surf_low     = c("surfaceContainerLow", "#1c1b20")
+    surf_cont    = c("surfaceContainer", "#201f25")
+    surf_high    = c("surfaceContainerHigh", "#2b292f")
+    surf_highest = c("surfaceContainerHighest", "#35343a")
+    primary      = c("primary", "#c8bfff")
+    on_primary   = c("onPrimary", "#30285f")
+    prim_cont    = c("primaryContainer", "#473f77")
+    secondary    = c("secondary", "#c9c3dc")
+    tertiary     = c("tertiary", "#ecb8cd")
+    on_surface   = c("onSurface", "#e5e1e9")
+    on_surf_var  = c("onSurfaceVariant", "#c9c5d0")
+    outline_var  = c("outlineVariant", "#48454e")
+
+    dst_dir = os.path.join(HOME, ".config/Kvantum/RyokuDynamic")
+    os.makedirs(dst_dir, exist_ok=True)
+
+    # 1) .kvconfig : cloner KvArcDark et réécrire [GeneralColors]
+    with open(os.path.join(src_dir, "KvArcDark.kvconfig"), encoding="utf-8") as f:
+        kv_lines = f.readlines()
+
+    color_map = {
+        "window.color": surface,
+        "base.color": surf_low,
+        "alt.base.color": surf_cont,
+        "button.color": surf_high,
+        "light.color": surf_highest,
+        "mid.light.color": surf_cont,
+        "dark.color": surf_lowest,
+        "mid.color": outline_var,
+        "highlight.color": primary,
+        "inactive.highlight.color": prim_cont,
+        "text.color": on_surface,
+        "window.text.color": on_surface,
+        "button.text.color": on_surface,
+        "disabled.text.color": on_surf_var,
+        "tooltip.text.color": on_surface,
+        "highlight.text.color": on_primary,
+        "link.color": primary,
+        "link.visited.color": tertiary,
+        "progress.indicator.text.color": on_primary,
+    }
+
+    out_kv = []
+    in_colors = False
+    for line in kv_lines:
+        stripped = line.strip()
+        if stripped.startswith("["):
+            in_colors = (stripped == "[GeneralColors]")
+            out_kv.append(line)
+            continue
+        if in_colors and "=" in stripped:
+            k = stripped.split("=", 1)[0].strip()
+            if k in color_map:
+                out_kv.append(f"{k}={color_map[k]}\n")
+                continue
+        if stripped.startswith("comment="):
+            out_kv.append("comment=Ryoku dynamic Material You theme\n")
+            continue
+        out_kv.append(line)
+
+    with open(os.path.join(dst_dir, "RyokuDynamic.kvconfig"), "w", encoding="utf-8") as f:
+        f.writelines(out_kv)
+
+    # 2) .svg : recolorer les hex principaux de KvArcDark.svg
+    with open(os.path.join(src_dir, "KvArcDark.svg"), encoding="utf-8") as f:
+        svg = f.read()
+
+    svg_map = {
+        "#5294e2": primary,
+        "#4693e6": primary,
+        "#58acff": primary,
+        "#b74aff": tertiary,
+        "#404552": surf_cont,
+        "#3c404e": surf_cont,
+        "#363c48": surf_cont,
+        "#343844": surf_low,
+        "#474d5d": surf_high,
+        "#444a58": surf_high,
+        "#505666": surf_highest,
+        "#4d5367": surf_highest,
+        "#22252e": surface,
+        "#2d303b": surf_low,
+        "#2f343f": surf_low,
+        "#111217": surf_lowest,
+    }
+    pattern = re.compile("|".join(re.escape(k) for k in svg_map), re.IGNORECASE)
+    svg = pattern.sub(lambda m: svg_map[m.group(0).lower()], svg)
+
+    with open(os.path.join(dst_dir, "RyokuDynamic.svg"), "w", encoding="utf-8") as f:
+        f.write(svg)
+
+    print(f"[ryoku-kde] ✓ Thème Kvantum écrit : {dst_dir}")
+    return True
+
+# ── 3. Appliquer via les outils plasma ────────────────────────────────────
+
+def apply_to_kde(has_kvantum: bool = False):
+    """Applique le Color Scheme, Kvantum et le Look-and-Feel."""
+    errors = []
+
+    # a) Kvantum
+    km = shutil.which("kvantummanager")
+    if has_kvantum and km:
+        r = subprocess.run([km, "--set", "RyokuDynamic"], capture_output=True, text=True)
+        if r.returncode == 0:
+            print("[ryoku-kde] ✓ kvantummanager --set RyokuDynamic")
+        else:
+            print(f"[ryoku-kde] ⚠ kvantummanager: {r.stderr.strip()}", file=sys.stderr)
+
+    # a) Color scheme
+    cs = shutil.which("plasma-apply-colorscheme")
+    if cs:
+        r = subprocess.run([cs, "RyokuDynamic"], capture_output=True, text=True)
+        if r.returncode == 0:
+            print("[ryoku-kde] ✓ plasma-apply-colorscheme RyokuDynamic")
+        else:
+            print(f"[ryoku-kde] ⚠ colorscheme: {r.stderr.strip()}", file=sys.stderr)
+            errors.append("colorscheme")
+    else:
+        print("[ryoku-kde] ⚠ plasma-apply-colorscheme non trouvé", file=sys.stderr)
+
+    # b) Look-and-Feel (optionnel — peut échouer hors session Plasma active)
+    laf = shutil.which("lookandfeeltool")
+    if laf:
+        r = subprocess.run([laf, "--apply", "org.ryoku.desktop"],
+                           capture_output=True, text=True)
+        if r.returncode == 0:
+            print("[ryoku-kde] ✓ lookandfeeltool --apply org.ryoku.desktop")
+        else:
+            # Pas bloquant — peut échouer si Plasma n'est pas actif
+            print(f"[ryoku-kde] ⚠ lookandfeeltool (non critique): {r.stderr.strip()[:100]}",
+                  file=sys.stderr)
+
+    # c) Notifier les apps Qt/KDE du changement (D-Bus)
+    try:
+        subprocess.run(
+            ["dbus-send", "--session", "--dest=org.kde.KWin",
+             "/KWin", "org.kde.KWin.reloadConfig"],
+            capture_output=True, timeout=3
+        )
+    except Exception:
+        pass
+
+    return len(errors) == 0
+
+# ── Main ───────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    build_colors_file()
+    build_laf_package()
+    has_kv = build_kvantum_theme()
+    if APPLY:
+        ok = apply_to_kde(has_kv)
+        sys.exit(0 if ok else 1)
+    else:
+        print("[ryoku-kde] Mode --no-apply : fichiers générés, rien appliqué.")
