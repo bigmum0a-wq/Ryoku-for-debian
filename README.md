@@ -2,16 +2,16 @@
 
 <img src="ryoku/assets/brand/logo-mark-v2.png" alt="Ryoku" width="140" />
 
-# Ryoku
+# Ryoku for Debian & Kali Linux
 
 **力と美のために** &middot; *For the sake of power and beauty.*
 
-A hand-built Linux desktop: one shell, three compositors, four distributions,
-all from one repository.
+Debian 13 (Trixie), Kali Linux & ParrotOS port of [Ryoku](https://github.com/Ryoku-dev/ryoku): one shell, Hyprland compositor, native `.deb` packages, and a GPG-signed APT repository.
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-E2342A?style=for-the-badge)](LICENSE)
-[![Release status](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fiso.ryoku.dev%2Fstable%2Flatest.json&query=%24.channel&label=status&color=E2342A&style=for-the-badge)](https://ryoku.dev)
-[![Build ISO](https://github.com/ryoku-dev/ryoku/actions/workflows/build-iso.yml/badge.svg)](https://github.com/ryoku-dev/ryoku/actions/workflows/build-iso.yml)
+[![Debian](https://img.shields.io/badge/Debian_13-A81D33?style=for-the-badge&logo=debian&logoColor=white)](#debian--kali-linux-port)
+[![Kali Linux](https://img.shields.io/badge/Kali_Linux-557C94?style=for-the-badge&logo=kalilinux&logoColor=white)](#debian--kali-linux-port)
+[![Release](https://img.shields.io/github/v/release/bigmum0a-wq/Ryoku-for-debian?style=for-the-badge&color=E2342A)](https://github.com/bigmum0a-wq/Ryoku-for-debian/releases)
 [![Discord](https://img.shields.io/badge/Discord-join-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/8KjBmUEyKA)
 [![Reddit](https://img.shields.io/badge/Reddit-r%2FRyokuArch-FF4500?style=for-the-badge&logo=reddit&logoColor=white)](https://www.reddit.com/r/RyokuArch/)
 
@@ -69,6 +69,7 @@ remain experimental while those editions get wider hardware coverage.
 
 | Edition | Compositors | Get it | Status |
 |---|---|---|---|
+| **Debian 13 / Kali / Parrot** | Hyprland | [GitHub Releases](https://github.com/bigmum0a-wq/Ryoku-for-debian/releases) (7 native `.deb` packages, Ed25519 GPG-signed) | active port |
 | **Arch Linux** | Hyprland, niri, Wayfire | signed ISO, or the [one-liner on an existing install](docs/install-without-iso.md#existing-arch-linux) | stable |
 | **CachyOS** | Hyprland, niri, Wayfire | signed ISO, or [the one-liner](docs/install-without-iso.md#existing-cachyos) | stable |
 | **Void Linux** glibc, runit | niri | signed ISO, or [the one-liner](docs/install-without-iso.md#void-linux) | experimental |
@@ -92,6 +93,34 @@ keeps GRUB with a Ryoku snapshots submenu, and leaves NVIDIA on nouveau
 
 The [no-ISO guide](docs/install-without-iso.md) covers each existing-system
 path, starting from a stock Void installation.
+
+## Debian & Kali Linux Port
+
+This fork (`debian/port`) adapts Ryoku Desktop for **Debian 13 (Trixie)**, **Kali Linux**, and **ParrotOS** with native `.deb` packaging, APT/dpkg integration (`ryoku-host`), and desktop fixes for Debian-based systems:
+
+- **7 native `.deb` packages:** `ryoku-desktop`, `ryoku-desktop-hyprland`, `ryoku-shell` (with `ryoku-hub`, `ryogami`, and FFmpeg-enabled `ryoku-livewall`/`ryogami-live`), `ryoku-cli`, `ryoku-palette-bridge`, `ryoku-blobs`, and `ryoku-archive-keyring`.
+- **Signed Releases & APT Security:** Signed with an **Ed25519** GPG release key (`InRelease`, `Release.gpg`, and `SHA256SUMS.asc`), with the public key bundled in `ryoku-archive-keyring` (`/usr/share/keyrings/ryoku-archive-keyring.gpg`).
+- **Desktop & App Integration:**
+  - **Keyring & Electron/VS Code:** `gnome-keyring-daemon` (`org.freedesktop.secrets`) + `gnome-libsecret` configuration.
+  - **Privileged XWayland GUIs:** `xhost +si:localuser:root` so `sudo virt-manager`, `gparted`, etc. open cleanly.
+  - **KDE / Qt Theme Bridge:** Dynamic `RyokuDynamic` Look-and-Feel, Color Scheme, and Kvantum SVG sync via `ryoku-apply-kde-theme`.
+  - **macOS-style Dock & Window Stash:** Dynamic installed-app dock (`ryoku-dock-sync`), right-click app replacer/manager (`ryoku-dock-picker`), and fanned-card window stashing (`Super + H` / `Super + Shift + H` via `ryoku-winstash`).
+  - **Abyssal Theme & Live Wallpaper:** Deep-ocean `Abyssal` theme + `abyssal.png` wallpaper and optional `ryoku-livewall-eco` CPU guard.
+
+### Quick Install (from GitHub Releases)
+
+1. Download `ryoku-deb-repo-<version>.tar.gz` (and optionally `SHA256SUMS.asc` + `ryoku-debian-release.pub.asc`) from [Releases](https://github.com/bigmum0a-wq/Ryoku-for-debian/releases).
+2. Extract and install:
+
+```bash
+tar -xzf ryoku-deb-repo-1.2.3.tar.gz
+sudo dpkg -i out/pool/main/r/ryoku/ryoku-archive-keyring_*.deb
+sudo apt-get update
+sudo apt-get install -y out/pool/main/r/ryoku/*.deb
+ryoku materialize
+```
+
+3. Log out and select the **Hyprland** session on your display manager. Press **`Super + ,`** to open Settings (`ryoku-hub`).
 
 ## The desktop
 
