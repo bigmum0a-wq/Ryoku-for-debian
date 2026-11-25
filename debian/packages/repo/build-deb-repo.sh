@@ -61,8 +61,15 @@ EOF
 log "Building ryoku-archive-keyring"
 KEYRING_DIR="$WORK_DIR/keyring"
 mkdir -p "$KEYRING_DIR/usr/share/keyrings" "$KEYRING_DIR/etc/apt/sources.list.d"
-if command -v gpg >/dev/null 2>&1 && [ -f "$REPO_ROOT/keys/ryoku-release-key.pub.asc" ]; then
-  gpg --dearmor < "$REPO_ROOT/keys/ryoku-release-key.pub.asc" > "$KEYRING_DIR/usr/share/keyrings/ryoku-archive-keyring.gpg"
+if command -v gpg >/dev/null 2>&1; then
+  KEY_CAT=$(mktemp)
+  for pubkey in "$REPO_ROOT/keys/ryoku-debian-release.pub.asc" "$REPO_ROOT/keys/ryoku-release-key.pub.asc"; do
+    [ -f "$pubkey" ] && cat "$pubkey" >> "$KEY_CAT"
+  done
+  if [ -s "$KEY_CAT" ]; then
+    gpg --dearmor < "$KEY_CAT" > "$KEYRING_DIR/usr/share/keyrings/ryoku-archive-keyring.gpg"
+  fi
+  rm -f "$KEY_CAT"
 fi
 cat << 'EOF' > "$KEYRING_DIR/etc/apt/sources.list.d/ryoku.sources"
 # Ryoku Debian APT source (commented by default: upstream repo.ryoku.dev does not host Debian trixie).
@@ -211,6 +218,26 @@ gzip -9c "$DISTS_DIR/Packages" > "$DISTS_DIR/Packages.gz"
 # Generate Release metadata
 apt-ftparchive release "$OUT_DIR/dists/$SUITE" > "$WORK_DIR/Release.tmp"
 cat "$WORK_DIR/Release.tmp" > "$OUT_DIR/dists/$SUITE/Release"
+
+# Sign Release (Release.gpg + InRelease) and pool SHA256SUMS if signing key is available
+SIGN_KEY="${RYOKU_GPG_KEY:-packaging@ryoku.dev}"
+if command -v gpg >/dev/null 2>&1 && gpg --list-secret-keys "$SIGN_KEY" >/dev/null 2>&1; then
+  log "Signing APT Release & SHA256SUMS with GPG key ($SIGN_KEY)"
+  gpg --batch --yes --pinentry-mode loopback -u "$SIGN_KEY" -abs \
+    -o "$OUT_DIR/dists/$SUITE/Release.gpg" "$OUT_DIR/dists/$SUITE/Release"
+  gpg --batch --yes --pinentry-mode loopback -u "$SIGN_KEY" --clearsign \
+    -o "$OUT_DIR/dists/$SUITE/InRelease" "$OUT_DIR/dists/$SUITE/Release"
+  (
+    cd "$POOL_DIR"
+    sha256sum *.deb > SHA256SUMS
+    gpg --batch --yes --pinentry-mode loopback -u "$SIGN_KEY" --clearsign \
+      -o SHA256SUMS.asc SHA256SUMS
+  )
+  [ -f "$REPO_ROOT/keys/ryoku-debian-release.pub.asc" ] && \
+    cp "$REPO_ROOT/keys/ryoku-debian-release.pub.asc" "$OUT_DIR/ryoku-debian-release.pub.asc"
+else
+  log "Warning: GPG secret key '$SIGN_KEY' not found; Release left unsigned"
+fi
 
 # 7. release.json for ryoku update
 cat << EOF > "$OUT_DIR/release.json"
