@@ -106,6 +106,20 @@ This fork (`debian/port`) adapts Ryoku Desktop for **Debian** (targeting `trixie
   - **macOS-style Dock & Window Stash:** Dynamic installed-app dock (`ryoku-dock-sync`), right-click app replacer/manager (`ryoku-dock-picker`), and fanned-card window stashing (`Super + H` / `Super + Shift + H` via `ryoku-winstash`).
   - **Abyssal Theme & Live Wallpaper:** Deep-ocean `Abyssal` theme + `abyssal.png` wallpaper and optional `ryoku-livewall-eco` CPU guard.
 
+### Divergences & Fixes vs Upstream (`Ryoku-dev/ryoku`)
+
+| Area | Upstream (`Ryoku-dev/ryoku`) | This Fork (`Ryoku-for-debian`) |
+|---|---|---|
+| **Packaging & Repo** | Arch (`pacman`), Void (`xbps`), Fedora (`rpm`) + R2 hosting | Native `.deb` (7 packages) + APT repository on GitHub Pages, signed with Ed25519 GPG |
+| **Host Abstraction** | Arch/Void/Fedora package names | `translations.tsv` mapping + APT/dpkg support in `ryoku-host` |
+| **Compositors** | Hyprland, niri, Wayfire | **Hyprland** only |
+| **Lock-Screen Cursor** | Hardware cursors enabled by default | `cursor.no_hardware_cursors = 1` in `misc.lua` (fixes cursor disappearing on Intel UHD 620 during `WlSessionLock`) |
+| **Privileged GUIs** | Standard XWayland cookies | `xhost +si:localuser:root` in `autostart.lua` + `virt-manager-ryoku` (`GDK_BACKEND=wayland`) |
+| **Hyprland Startup Checks** | Default upstream checks | `disable_xdg_env_checks`, `disable_hyprland_guiutils_check`, `disable_watchdog_warning` in `misc.lua` |
+| **Themes & Shell** | Upstream theme catalog | Added **Abyssal** theme (`themes_gen.go`, `ThemeCatalog.js`, `abyssal.png`) |
+| **Dock & Window Stash** | Basic pinned dock & `ryoku-workspace hide` | Dynamic `ryoku-dock-sync`, right-click `ryoku-dock-picker`, fanned-card `ryoku-winstash` (`Super + H` via Lua IPC) |
+| **Power & Live Wallpaper** | Default profile / continuous `ryogami-live` | `balanced` default profile + optional opt-in `ryoku-livewall-eco` (`SIGSTOP`/`SIGCONT` when desktop is covered) |
+
 ### Tested Systems & Limitations
 
 | System | Environment | Status | Notes |
