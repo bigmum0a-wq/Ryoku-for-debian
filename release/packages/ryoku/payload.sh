@@ -15,8 +15,8 @@ build)
 	stage_prebuilt && exit 0
 	mkdir -p "$RYOKU_BUILD_DIR"
 	cd "$RYOKU_SRC/ryoku/cli"
-	CGO_ENABLED=0 go build -trimpath -mod=vendor -o "$RYOKU_BUILD_DIR/ryoku" .
-	CGO_ENABLED=0 go build -trimpath -mod=vendor -o "$RYOKU_BUILD_DIR/ryoku-host" ./cmd/ryoku-host
+	CGO_ENABLED=0 go build -trimpath -mod=vendor -ldflags='-s -w' -o "$RYOKU_BUILD_DIR/ryoku" .
+	CGO_ENABLED=0 go build -trimpath -mod=vendor -ldflags='-s -w' -o "$RYOKU_BUILD_DIR/ryoku-host" ./cmd/ryoku-host
 	;;
 install)
 	destdir=${2:?usage: payload.sh install DESTDIR systemd|runit}

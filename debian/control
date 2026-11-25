@@ -35,7 +35,7 @@ Description: Ryoku Palette Bridge for dynamic wallpaper-derived color sync
  Interfaces between Matugen color extraction and applications.
 
 Package: ryoku-desktop
-Architecture: all
+Architecture: any
 Depends: ${misc:Depends},
          ryoku-cli (>= ${source:Version}),
          ryoku-shell (>= ${source:Version}),

@@ -15,7 +15,7 @@ build)
 	stage_prebuilt && exit 0
 	mkdir -p "$RYOKU_BUILD_DIR"
 	cd "$RYOKU_SRC/ryoku/shell/ipc"
-	CGO_ENABLED=0 go build -trimpath -mod=vendor -o "$RYOKU_BUILD_DIR/ryoku-shell" .
+	CGO_ENABLED=0 go build -trimpath -mod=vendor -ldflags='-s -w' -o "$RYOKU_BUILD_DIR/ryoku-shell" .
 	"$RYOKU_SRC/ryoku/shell/livewall/build.sh" "$RYOKU_BUILD_DIR/ryoku-livewall"
 	;;
 install)

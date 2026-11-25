@@ -94,7 +94,7 @@ if ! pkg-config --exists wayland-protocols wayland-client libavformat libavcodec
   log "wayland-protocols dev package not found; staging prebuilt ryoku-shell and fallback livewall"
   PREBUILT_SHELL="$WORK_DIR/prebuilt-shell"
   mkdir -p "$PREBUILT_SHELL"
-  ( cd "$REPO_ROOT/ryoku/shell/ipc" && CGO_ENABLED=0 go build -trimpath -mod=vendor -o "$PREBUILT_SHELL/ryoku-shell" . )
+  ( cd "$REPO_ROOT/ryoku/shell/ipc" && CGO_ENABLED=0 go build -trimpath -mod=vendor -ldflags='-s -w' -o "$PREBUILT_SHELL/ryoku-shell" . )
   printf '#!/bin/sh\n# ryoku-livewall fallback stub\nexit 0\n' > "$PREBUILT_SHELL/ryoku-livewall"
   chmod 755 "$PREBUILT_SHELL/ryoku-livewall"
   RYOKU_PREBUILT_DIR="$PREBUILT_SHELL" RYOKU_BUILD_DIR="$SHELL_BUILD" "$REPO_ROOT/release/packages/ryoku-shell/payload.sh" build
@@ -105,10 +105,10 @@ else
 fi
 # Build and package ryogami & ryoku-hub so wallpaper daemon and Hub backend are always in /usr/bin
 log "Building ryogami"
-( cd "$REPO_ROOT/ryoku/shell/ryogami/daemon" && CGO_ENABLED=0 go build -trimpath -o "$SHELL_DIR/usr/bin/ryogami" . )
+( cd "$REPO_ROOT/ryoku/shell/ryogami/daemon" && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o "$SHELL_DIR/usr/bin/ryogami" . )
 chmod 755 "$SHELL_DIR/usr/bin/ryogami"
 log "Building ryoku-hub"
-( cd "$REPO_ROOT/ryoku/hub/backend" && CGO_ENABLED=0 go build -trimpath -o "$SHELL_DIR/usr/bin/ryoku-hub" . )
+( cd "$REPO_ROOT/ryoku/hub/backend" && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o "$SHELL_DIR/usr/bin/ryoku-hub" . )
 chmod 755 "$SHELL_DIR/usr/bin/ryoku-hub"
 package_deb "ryoku-shell" "$ARCH" "quickshell, bash" \
   "Ryoku Desktop Shell IPC and supervision daemon" "$SHELL_DIR"
@@ -120,6 +120,13 @@ PALETTE_BUILD="$WORK_DIR/build/palette"
 mkdir -p "$PALETTE_DIR" "$PALETTE_BUILD"
 RYOKU_BUILD_DIR="$PALETTE_BUILD" "$REPO_ROOT/release/packages/ryoku-palette-bridge/payload.sh" build
 RYOKU_BUILD_DIR="$PALETTE_BUILD" "$REPO_ROOT/release/packages/ryoku-palette-bridge/payload.sh" install "$PALETTE_DIR" systemd
+# Strip Go sources, unit tests, packaging files and README from runtime payload
+rm -rf "$PALETTE_DIR/usr/share/ryoku/palette-bridge/tests" \
+       "$PALETTE_DIR/usr/share/ryoku/palette-bridge/packaging" \
+       "$PALETTE_DIR/usr/share/ryoku/palette-bridge/"*.go \
+       "$PALETTE_DIR/usr/share/ryoku/palette-bridge/go.mod" \
+       "$PALETTE_DIR/usr/share/ryoku/palette-bridge/install.sh" \
+       "$PALETTE_DIR/usr/share/ryoku/palette-bridge/README.md"
 package_deb "ryoku-palette-bridge" "$ARCH" "ryoku-cli" \
   "Ryoku Palette Bridge for dynamic wallpaper-derived color sync" "$PALETTE_DIR"
 
@@ -164,6 +171,8 @@ HYPR_BUILD="$WORK_DIR/build/hyprland"
 mkdir -p "$HYPR_DIR" "$HYPR_BUILD"
 RYOKU_BUILD_DIR="$HYPR_BUILD" "$REPO_ROOT/release/packages/ryoku-desktop-hyprland/payload.sh" build
 RYOKU_BUILD_DIR="$HYPR_BUILD" "$REPO_ROOT/release/packages/ryoku-desktop-hyprland/payload.sh" install "$HYPR_DIR" systemd
+rm -rf "$HYPR_DIR/usr/share/ryoku/config/hypr/CHANGELOG.md" \
+       "$HYPR_DIR/usr/share/ryoku/config/hypr/plugins/keysounds"
 package_deb "ryoku-desktop-hyprland" "$ARCH" "hyprland, ryoku-shell" \
   "Ryoku Desktop Hyprland compositor integration and configuration" "$HYPR_DIR"
 
@@ -183,7 +192,8 @@ if [ -f "$REPO_ROOT/debian/packages/bin/ryoku-apply-kde-theme" ]; then
   install -Dm755 "$REPO_ROOT/debian/packages/bin/ryoku-apply-kde-theme" \
     "$DESKTOP_DIR/usr/bin/ryoku-apply-kde-theme"
 fi
-package_deb "ryoku-desktop" "all" \
+find "$DESKTOP_DIR/usr/share/ryoku" \( -name "README.md" -o -name "__pycache__" -o -name "*.pyc" \) -exec rm -rf {} + 2>/dev/null || true
+package_deb "ryoku-desktop" "$ARCH" \
   "ryoku-cli (>= $PKGVER), ryoku-shell (>= $PKGVER), ryoku-palette-bridge (>= $PKGVER), ryoku-blobs (>= $PKGVER), ryoku-desktop-hyprland (>= $PKGVER), qml6-module-qtquick3d, wireplumber, pipewire, grim, slurp, wl-clipboard, tesseract-ocr, playerctl, cava, hyprpicker, hyprsunset, hypridle, ffmpeg, mpv, jq, socat" \
   "Ryoku Desktop Environment (metapackage and system configuration)" "$DESKTOP_DIR"
 

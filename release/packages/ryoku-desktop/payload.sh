@@ -125,7 +125,7 @@ EOF
       else
         app_build="${RYOKU_BUILD_DIR:?set RYOKU_BUILD_DIR to a scratch directory}/app-helpers"
         install -d "$app_build"
-        ( cd "$helperdir" && go build -o "$app_build/$helper" . )
+        ( cd "$helperdir" && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o "$app_build/$helper" . )
         install -Dm755 "$app_build/$helper" "$pkgdir/usr/bin/$helper"
       fi
     done

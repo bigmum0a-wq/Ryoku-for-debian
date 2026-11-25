@@ -45,7 +45,7 @@ build)
   stage_prebuilt && exit 0
   mkdir -p "$RYOKU_BUILD_DIR"
   cd "$_repo/ryoku/wm/hyprland"
-  go build -mod=vendor -o "$RYOKU_BUILD_DIR/ryoku-wm-hyprland" .
+  go build -mod=vendor -trimpath -ldflags='-s -w' -o "$RYOKU_BUILD_DIR/ryoku-wm-hyprland" .
   ;;
   install)
     pkgdir=${2:?install requires a destination root}
