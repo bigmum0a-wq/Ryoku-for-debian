@@ -79,43 +79,95 @@ Item {
 
     Process {
         id: kdeThemesProc
-        command: ["sh", "-c", "lookandfeeltool --list 2>/dev/null; echo '---CURRENT---'; kreadconfig6 --file kdeglobals --group KDE --key LookAndFeelPackage 2>/dev/null"]
+        command: [
+            "python3", "-c",
+            "import os,json,subprocess\n" +
+            "cur=''\n" +
+            "try:\n" +
+            "  cur=subprocess.check_output(['kreadconfig6','--file','kdeglobals','--group','KDE','--key','LookAndFeelPackage'],text=True).strip()\n" +
+            "except Exception: pass\n" +
+            "out=[]; seen=set()\n" +
+            "for base in [os.path.expanduser('~/.local/share/plasma/look-and-feel'), '/usr/share/plasma/look-and-feel']:\n" +
+            "  if not os.path.isdir(base): continue\n" +
+            "  for entry in sorted(os.listdir(base)):\n" +
+            "    if entry in seen: continue\n" +
+            "    d=os.path.join(base,entry); mp=os.path.join(d,'metadata.json')\n" +
+            "    if not os.path.isfile(mp): continue\n" +
+            "    try:\n" +
+            "      m=json.load(open(mp))\n" +
+            "      if m.get('KPackageStructure')!='Plasma/LookAndFeel': continue\n" +
+            "      name=m.get('KPlugin',{}).get('Name') or entry\n" +
+            "    except Exception: continue\n" +
+            "    prev=''\n" +
+            "    for p in ['contents/previews/preview.png','contents/previews/fullscreenpreview.jpg']:\n" +
+            "      fp=os.path.join(d,p)\n" +
+            "      if os.path.isfile(fp): prev='file://'+fp; break\n" +
+            "    seen.add(entry); out.append({'id':entry,'name':name,'preview':prev})\n" +
+            "print(json.dumps({'active':cur,'items':out}))"
+        ]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
-                var parts = this.text.split("---CURRENT---");
-                var lines = (parts[0] || "").trim().split("\n");
-                var list = [];
-                for (var i = 0; i < lines.length; i++) {
-                    var s = lines[i].trim();
-                    if (s.length > 0 && s.indexOf(" ") === -1)
-                        list.push(s);
-                }
-                pg.kdeGlobalThemes = list;
-                if (parts.length > 1)
-                    pg.activeKdeGlobal = parts[1].trim();
+                try {
+                    var res = JSON.parse(this.text);
+                    if (res.active) pg.activeKdeGlobal = res.active;
+                    if (Array.isArray(res.items)) pg.kdeGlobalThemes = res.items;
+                } catch (e) {}
             }
         }
     }
 
     Process {
         id: kdeColorsProc
-        command: ["sh", "-c", "plasma-apply-colorscheme --list-schemes 2>/dev/null"]
+        command: [
+            "python3", "-c",
+            "import os,json,re,subprocess\n" +
+            "def to_hex(v,fb):\n" +
+            "  v=(v or '').strip()\n" +
+            "  if v.startswith('#') and len(v)>=7: return v[:7]\n" +
+            "  p=v.split(',')\n" +
+            "  if len(p)>=3:\n" +
+            "    try: return '#%02x%02x%02x'%(int(p[0]),int(p[1]),int(p[2]))\n" +
+            "    except Exception: pass\n" +
+            "  return fb\n" +
+            "cur=''\n" +
+            "try:\n" +
+            "  cur=subprocess.check_output(['kreadconfig6','--file','kdeglobals','--group','General','--key','ColorScheme'],text=True).strip()\n" +
+            "except Exception: pass\n" +
+            "out=[]; seen=set()\n" +
+            "for base in [os.path.expanduser('~/.local/share/color-schemes'), '/usr/share/color-schemes']:\n" +
+            "  if not os.path.isdir(base): continue\n" +
+            "  for fn in sorted(os.listdir(base)):\n" +
+            "    if not fn.endswith('.colors'): continue\n" +
+            "    cid=fn[:-7]\n" +
+            "    if cid in seen: continue\n" +
+            "    seen.add(cid)\n" +
+            "    secs={}; sec=''\n" +
+            "    try:\n" +
+            "      for line in open(os.path.join(base,fn),encoding='utf-8',errors='ignore'):\n" +
+            "        s=line.strip()\n" +
+            "        if not s or s.startswith('#'): continue\n" +
+            "        m=re.match(r'^\\[(.+)\\]$',s)\n" +
+            "        if m: sec=m.group(1); secs.setdefault(sec,{}); continue\n" +
+            "        if '=' in s and sec:\n" +
+            "          k,_,v=s.partition('='); secs[sec][k.strip()]=v.strip()\n" +
+            "    except Exception: continue\n" +
+            "    name=secs.get('General',{}).get('Name') or cid\n" +
+            "    win_bg=to_hex(secs.get('Colors:Window',{}).get('BackgroundNormal'),'#232629')\n" +
+            "    win_fg=to_hex(secs.get('Colors:Window',{}).get('ForegroundNormal'),'#eff0f1')\n" +
+            "    view_bg=to_hex(secs.get('Colors:View',{}).get('BackgroundNormal'),win_bg)\n" +
+            "    sel_bg=to_hex(secs.get('Colors:Selection',{}).get('BackgroundNormal'),'#3daee9')\n" +
+            "    out.append({'id':cid,'name':name,'winBg':win_bg,'winFg':win_fg,'viewBg':view_bg,'accent':sel_bg})\n" +
+            "print(json.dumps({'active':cur,'items':out}))"
+        ]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
-                var lines = this.text.trim().split("\n");
-                var list = [];
-                for (var i = 0; i < lines.length; i++) {
-                    var m = lines[i].match(/^\s*\*\s+(.+?)(\s+\(current.*\))?$/);
-                    if (m) {
-                        var name = m[1].trim();
-                        list.push(name);
-                        if (m[2])
-                            pg.activeKdeColor = name;
-                    }
-                }
-                pg.kdeColorSchemes = list;
+                try {
+                    var res = JSON.parse(this.text);
+                    if (res.active) pg.activeKdeColor = res.active;
+                    if (Array.isArray(res.items)) pg.kdeColorSchemes = res.items;
+                } catch (e) {}
             }
         }
     }
@@ -395,13 +447,14 @@ Item {
                     anchors.left: parent.left; anchors.right: parent.right
                     divider: true
                     label: I18n.tr("Sync Ryoku palette to KDE/Qt")
-                    desc: I18n.tr("Generate RyokuDynamic color scheme and apply org.ryoku.desktop to Qt/KDE apps.")
-                    controlWidth: 160
+                    desc: I18n.tr("Generate RyokuDynamic color scheme + Kvantum style and apply org.ryoku.desktop.")
+                    controlWidth: 165
                     Rectangle {
                         anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                        width: 150; height: 28; radius: Tokens.rSm
-                        color: syncKdeHover.hovered ? Tokens.tint10 : Tokens.surface2
-                        border.width: 1; border.color: Tokens.lineSoft
+                        width: 155; height: 30; radius: Tokens.rSm
+                        color: Tokens.surface2
+                        border.width: syncKdeHover.hovered ? 2 : 1
+                        border.color: syncKdeHover.hovered ? Tokens.accent : Tokens.lineSoft
                         HoverHandler { id: syncKdeHover }
                         TapHandler {
                             onTapped: {
@@ -414,7 +467,7 @@ Item {
                             anchors.centerIn: parent
                             text: I18n.tr("Sync Ryoku → KDE")
                             color: Tokens.ink
-                            font.family: Tokens.ui; font.pixelSize: Tokens.fSmall
+                            font.family: Tokens.ui; font.pixelSize: Tokens.fSmall; font.weight: Font.Medium
                         }
                     }
                 }
@@ -430,33 +483,79 @@ Item {
                 Flow {
                     width: parent.width - Tokens.s4 * 2
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Tokens.s2
+                    spacing: Tokens.s3
                     topPadding: Tokens.s2
                     bottomPadding: Tokens.s3
 
                     Repeater {
                         model: pg.kdeGlobalThemes
                         delegate: Rectangle {
-                            id: lafChip
-                            required property string modelData
-                            readonly property bool active: pg.activeKdeGlobal === modelData
-                            width: lafTxt.implicitWidth + 20; height: 28; radius: Tokens.rSm
-                            color: active ? Tokens.bone : (lafHover.hovered ? Tokens.tint10 : Tokens.surface2)
-                            border.width: 1
-                            border.color: active ? Tokens.bone : Tokens.lineSoft
+                            id: lafCard
+                            required property var modelData
+                            readonly property bool active: pg.activeKdeGlobal === modelData.id
+                            width: 164; height: 118; radius: Tokens.rMd
+                            color: Tokens.surface2
+                            border.width: active ? 2 : 1
+                            border.color: active ? Tokens.accent : (lafHover.hovered ? Tokens.line : Tokens.lineSoft)
+                            clip: true
+
                             HoverHandler { id: lafHover }
                             TapHandler {
                                 onTapped: {
-                                    pg.activeKdeGlobal = lafChip.modelData;
-                                    Quickshell.execDetached(["lookandfeeltool", "--apply", lafChip.modelData]);
+                                    pg.activeKdeGlobal = lafCard.modelData.id;
+                                    Quickshell.execDetached(["lookandfeeltool", "--apply", lafCard.modelData.id]);
                                 }
                             }
-                            Text {
-                                id: lafTxt
-                                anchors.centerIn: parent
-                                text: lafChip.modelData
-                                color: lafChip.active ? Tokens.inkOnBone : Tokens.ink
-                                font.family: Tokens.ui; font.pixelSize: Tokens.fSmall
+
+                            Column {
+                                anchors.fill: parent
+                                anchors.margins: Tokens.s2
+                                spacing: Tokens.s1
+
+                                Rectangle {
+                                    width: parent.width
+                                    height: 76
+                                    radius: Tokens.rSm
+                                    color: Tokens.surface1
+                                    clip: true
+
+                                    Image {
+                                        anchors.fill: parent
+                                        source: lafCard.modelData.preview || ""
+                                        fillMode: Image.PreserveAspectCrop
+                                        visible: (lafCard.modelData.preview || "").length > 0
+                                        asynchronous: true
+                                    }
+
+                                    Row {
+                                        anchors.centerIn: parent
+                                        spacing: 6
+                                        visible: (lafCard.modelData.preview || "").length === 0
+                                        Rectangle { width: 16; height: 16; radius: 8; color: Tokens.accent }
+                                        Rectangle { width: 16; height: 16; radius: 8; color: Tokens.inkMuted }
+                                        Rectangle { width: 16; height: 16; radius: 8; color: Tokens.surface2; border.width: 1; border.color: Tokens.line }
+                                    }
+                                }
+
+                                Row {
+                                    width: parent.width
+                                    spacing: Tokens.s1
+                                    Text {
+                                        width: parent.width - (lafCard.active ? 16 : 0)
+                                        text: lafCard.modelData.name || lafCard.modelData.id
+                                        color: Tokens.ink
+                                        font.family: Tokens.ui
+                                        font.pixelSize: Tokens.fSmall
+                                        font.weight: lafCard.active ? Font.DemiBold : Font.Medium
+                                        elide: Text.ElideRight
+                                    }
+                                    Rectangle {
+                                        visible: lafCard.active
+                                        width: 12; height: 12; radius: 6
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        color: Tokens.accent
+                                    }
+                                }
                             }
                         }
                     }
@@ -473,33 +572,60 @@ Item {
                 Flow {
                     width: parent.width - Tokens.s4 * 2
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Tokens.s2
+                    spacing: Tokens.s3
                     topPadding: Tokens.s2
                     bottomPadding: Tokens.s4
 
                     Repeater {
                         model: pg.kdeColorSchemes
                         delegate: Rectangle {
-                            id: csChip
-                            required property string modelData
-                            readonly property bool active: pg.activeKdeColor === modelData
-                            width: csTxt.implicitWidth + 20; height: 28; radius: Tokens.rSm
-                            color: active ? Tokens.bone : (csHover.hovered ? Tokens.tint10 : Tokens.surface2)
-                            border.width: 1
-                            border.color: active ? Tokens.bone : Tokens.lineSoft
+                            id: csCard
+                            required property var modelData
+                            readonly property bool active: pg.activeKdeColor === modelData.id
+                            width: 164; height: 78; radius: Tokens.rMd
+                            color: modelData.winBg || Tokens.surface2
+                            border.width: active ? 2 : 1
+                            border.color: active ? Tokens.accent : (csHover.hovered ? Tokens.line : Tokens.lineSoft)
+
                             HoverHandler { id: csHover }
                             TapHandler {
                                 onTapped: {
-                                    pg.activeKdeColor = csChip.modelData;
-                                    Quickshell.execDetached(["plasma-apply-colorscheme", csChip.modelData]);
+                                    pg.activeKdeColor = csCard.modelData.id;
+                                    Quickshell.execDetached(["plasma-apply-colorscheme", csCard.modelData.id]);
                                 }
                             }
-                            Text {
-                                id: csTxt
-                                anchors.centerIn: parent
-                                text: csChip.modelData
-                                color: csChip.active ? Tokens.inkOnBone : Tokens.ink
-                                font.family: Tokens.ui; font.pixelSize: Tokens.fSmall
+
+                            Column {
+                                anchors.fill: parent
+                                anchors.margins: Tokens.s2
+                                spacing: Tokens.s2
+
+                                Row {
+                                    width: parent.width
+                                    spacing: Tokens.s1
+                                    Text {
+                                        width: parent.width - (csCard.active ? 16 : 0)
+                                        text: csCard.modelData.name || csCard.modelData.id
+                                        color: csCard.modelData.winFg || Tokens.ink
+                                        font.family: Tokens.ui
+                                        font.pixelSize: Tokens.fSmall
+                                        font.weight: csCard.active ? Font.DemiBold : Font.Medium
+                                        elide: Text.ElideRight
+                                    }
+                                    Rectangle {
+                                        visible: csCard.active
+                                        width: 12; height: 12; radius: 6
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        color: csCard.modelData.accent || Tokens.accent
+                                    }
+                                }
+
+                                Row {
+                                    spacing: 6
+                                    Rectangle { width: 22; height: 14; radius: 3; color: csCard.modelData.viewBg || "#1e1e1e"; border.width: 1; border.color: "#44ffffff" }
+                                    Rectangle { width: 22; height: 14; radius: 3; color: csCard.modelData.accent || "#3daee9"; border.width: 1; border.color: "#44ffffff" }
+                                    Rectangle { width: 22; height: 14; radius: 3; color: csCard.modelData.winFg || "#ffffff"; border.width: 1; border.color: "#44888888" }
+                                }
                             }
                         }
                     }

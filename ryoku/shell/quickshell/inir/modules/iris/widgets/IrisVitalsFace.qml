@@ -10,23 +10,21 @@ import Ryoku.Ui.Singletons
 
 // KDE-style analytical System Monitor widget: two side-by-side cards
 // (Left: CPU & RAM vertical bar charts; Right: Wi-Fi speed vertical bar chart).
-// Uses the built-in ResourceUsage singleton for CPU/RAM (reliable, already polled).
-// Wi-Fi speed is read directly from /proc/net/dev every 1 s.
 IrisWidgetFace {
     id: root
 
-    implicitWidth:  root.dp(380)
-    implicitHeight: root.dp(168)
+    implicitWidth:  root.dp(320)
+    implicitHeight: root.dp(136)
+    padding:        root.dp(10)
+    clip:           true
 
-    readonly property int maxSamples: 18
+    readonly property int maxSamples: 16
 
     // ── CPU / RAM from ResourceUsage singleton ─────────────────────────────
-    readonly property real cpuPct: ResourceUsage.cpuUsage           // 0..1
-    readonly property real ramPct: ResourceUsage.memoryUsedPercentage // 0..1
+    readonly property real cpuPct: ResourceUsage.cpuUsage
+    readonly property real ramPct: ResourceUsage.memoryUsedPercentage
     readonly property real ramUsedGb: ResourceUsage.memoryUsed / (1024 * 1024)
-    readonly property real ramTotalGb: ResourceUsage.memoryTotal   / (1024 * 1024)
 
-    // Keep the service alive while the widget is live
     property bool _holding: false
     function _syncHold() {
         if (root.live && !root._holding) {
@@ -41,7 +39,6 @@ IrisWidgetFace {
     Component.onCompleted: root._syncHold()
     Component.onDestruction: { if (root._holding) ResourceUsage.releaseKeepAlive(); }
 
-    // Push CPU / RAM history every time the service emits a new value
     property var cpuHistory: Array(root.maxSamples).fill(0)
     property var ramHistory: Array(root.maxSamples).fill(0)
 
@@ -117,33 +114,33 @@ IrisWidgetFace {
         onTriggered: { if (!netProc.running) netProc.running = true; }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────
     function fmtSpeed(kbps) {
-        if (kbps >= 1024) return (kbps / 1024).toFixed(1) + " MB/s";
-        return Math.round(kbps) + " KB/s";
+        if (kbps >= 1024) return (kbps / 1024).toFixed(1) + "M";
+        return Math.round(kbps) + "K";
     }
 
     function barColor(pct, base) {
         return pct >= 0.85 ? root.danger : base;
     }
 
-    // ── Reusable bar-chart component ──────────────────────────────────────
+    // ── Reusable bar-chart component (fills available height cleanly) ──────
     component MiniBarChart: ColumnLayout {
         id: chart
         required property string label
         required property string readout
         required property var    history
         required property color  fillColor
-        property  real   barHeight: 32
 
-        Layout.fillWidth: true
-        spacing: root.dp(3)
+        Layout.fillWidth:  true
+        Layout.fillHeight: true
+        spacing: root.dp(2)
 
         RowLayout {
             Layout.fillWidth: true
+            spacing: root.dp(4)
             Text {
                 text: chart.label
-                font.pixelSize: root.dp(11)
+                font.pixelSize: root.dp(10)
                 font.weight: Font.DemiBold
                 color: root.ink
                 Layout.fillWidth: true
@@ -151,31 +148,34 @@ IrisWidgetFace {
             }
             Text {
                 text: chart.readout
-                font.pixelSize: root.dp(10)
+                font.pixelSize: root.dp(9.5)
                 color: chart.fillColor
+                elide: Text.ElideRight
             }
         }
 
         Rectangle {
-            Layout.fillWidth: true
-            height: root.dp(chart.barHeight)
+            Layout.fillWidth:  true
+            Layout.fillHeight: true
+            Layout.minimumHeight: root.dp(18)
             radius: root.dp(4)
             color: Qt.rgba(root.ink.r, root.ink.g, root.ink.b, 0.08)
+            clip: true
 
             Row {
                 anchors.fill:    parent
-                anchors.margins: root.dp(3)
+                anchors.margins: root.dp(2)
                 spacing:         root.dp(2)
 
                 Repeater {
                     model: root.maxSamples
                     delegate: Item {
                         required property int index
-                        width:  (parent.width - (root.maxSamples - 1) * root.dp(2)) / root.maxSamples
+                        width:  Math.max(1, (parent.width - (root.maxSamples - 1) * root.dp(2)) / root.maxSamples)
                         height: parent.height
 
                         readonly property real sample: (chart.history && index < chart.history.length)
-                            ? Math.max(0.06, Number(chart.history[index]) || 0) : 0.06
+                            ? Math.max(0.08, Number(chart.history[index]) || 0) : 0.08
 
                         Rectangle {
                             anchors.bottom: parent.bottom
@@ -196,28 +196,28 @@ IrisWidgetFace {
     RowLayout {
         anchors.fill:    parent
         anchors.margins: root.padding
-        spacing:         root.dp(8)
+        spacing:         root.dp(6)
 
         // Left card: CPU + RAM
         Rectangle {
             Layout.fillWidth:  true
             Layout.fillHeight: true
-            radius:            root.dp(8)
+            radius:            root.dp(7)
             color:             Qt.rgba(root.ink.r, root.ink.g, root.ink.b, 0.05)
             border.width:      1
             border.color:      Qt.rgba(root.ink.r, root.ink.g, root.ink.b, 0.10)
+            clip:              true
 
             ColumnLayout {
                 anchors.fill:    parent
-                anchors.margins: root.dp(8)
-                spacing:         root.dp(6)
+                anchors.margins: root.dp(6)
+                spacing:         root.dp(4)
 
                 MiniBarChart {
                     label:     "CPU"
                     readout:   Math.round(root.cpuPct * 100) + "%"
                     history:   root.cpuHistory
                     fillColor: root.barColor(root.cpuPct, root.accent)
-                    barHeight: 34
                 }
 
                 MiniBarChart {
@@ -225,7 +225,6 @@ IrisWidgetFace {
                     readout:   Math.round(root.ramPct * 100) + "% (" + root.ramUsedGb.toFixed(1) + "G)"
                     history:   root.ramHistory
                     fillColor: root.barColor(root.ramPct, root.accent2)
-                    barHeight: 34
                 }
             }
         }
@@ -234,21 +233,22 @@ IrisWidgetFace {
         Rectangle {
             Layout.fillWidth:  true
             Layout.fillHeight: true
-            radius:            root.dp(8)
+            radius:            root.dp(7)
             color:             Qt.rgba(root.ink.r, root.ink.g, root.ink.b, 0.05)
             border.width:      1
             border.color:      Qt.rgba(root.ink.r, root.ink.g, root.ink.b, 0.10)
+            clip:              true
 
             ColumnLayout {
                 anchors.fill:    parent
-                anchors.margins: root.dp(8)
-                spacing:         root.dp(6)
+                anchors.margins: root.dp(6)
+                spacing:         root.dp(4)
 
                 RowLayout {
                     Layout.fillWidth: true
                     Text {
                         text:              "Wi-Fi"
-                        font.pixelSize:    root.dp(11)
+                        font.pixelSize:    root.dp(10)
                         font.weight:       Font.DemiBold
                         color:             root.ink
                         Layout.fillWidth:  true
@@ -256,7 +256,7 @@ IrisWidgetFace {
                     }
                     Text {
                         text:           root.netIface
-                        font.pixelSize: root.dp(10)
+                        font.pixelSize: root.dp(9)
                         color:          root.inkSecondary
                     }
                 }
@@ -266,7 +266,6 @@ IrisWidgetFace {
                     readout:   "↑ " + root.fmtSpeed(root.txKbps)
                     history:   root.netHistory
                     fillColor: root.highlight
-                    barHeight: 74
                 }
             }
         }
