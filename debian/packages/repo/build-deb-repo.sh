@@ -158,6 +158,10 @@ else
   RYOKU_PREBUILT_DIR="$PREBUILT_BLOBS" RYOKU_BUILD_DIR="$BLOBS_BUILD" "$REPO_ROOT/release/packages/ryoku-blobs/payload.sh" build
   RYOKU_PREBUILT_DIR="$PREBUILT_BLOBS" RYOKU_BUILD_DIR="$BLOBS_BUILD" "$REPO_ROOT/release/packages/ryoku-blobs/payload.sh" install "$BLOBS_DIR" systemd
 fi
+# Debian Qt 6.8 compat: install RectangularShadow stub into QtQuick/Effects
+# (RectangularShadow was added in Qt 6.9; this stub uses MultiEffect as fallback)
+install -Dm644 "$REPO_ROOT/debian/packages/stubs/QtQuick/Effects/RectangularShadow.qml" \
+  "$BLOBS_DIR/usr/lib/x86_64-linux-gnu/qt6/qml/QtQuick/Effects/RectangularShadow.qml"
 mkdir -p "$BLOBS_DIR/DEBIAN"
 cat << 'EOF' > "$BLOBS_DIR/DEBIAN/postinst"
 #!/bin/sh
