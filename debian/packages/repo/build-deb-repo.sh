@@ -72,7 +72,7 @@ if command -v gpg >/dev/null 2>&1; then
   rm -f "$KEY_CAT"
 fi
 cat << 'EOF' > "$KEYRING_DIR/etc/apt/sources.list.d/ryoku.sources"
-# Ryoku Debian & Kali APT repository (GitHub Pages mirror)
+# Ryoku Debian APT repository (GitHub Pages mirror)
 Types: deb
 URIs: https://bigmum0a-wq.github.io/Ryoku-for-debian/apt
 Suites: trixie
