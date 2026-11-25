@@ -13,6 +13,42 @@ package main
 // theme.theme, the daemon copies the selected theme's palette into the passthrough
 // themePalette key, and the pill binds Theme.namedScheme to it to repaint live.
 var themePalettes = map[string]map[string]string{
+	"Abyssal": {
+		"surface":                 "#060d1a",
+		"onSurface":               "#d8e8ff",
+		"surfaceVariant":          "#0f1e36",
+		"onSurfaceVariant":        "#9bb8db",
+		"surfaceContainerLowest":  "#030712",
+		"surfaceContainerLow":     "#071020",
+		"surfaceContainer":        "#0f1e36",
+		"surfaceContainerHigh":    "#162a4a",
+		"surfaceContainerHighest": "#1e3860",
+		"inverseSurface":          "#d8e8ff",
+		"inverseOnSurface":        "#0f1e36",
+		"surfaceTint":             "#38bdf8",
+		"primary":                 "#38bdf8",
+		"onPrimary":               "#061529",
+		"primaryContainer":        "#0f2b4c",
+		"onPrimaryContainer":      "#bae6fd",
+		"secondary":               "#2dd4bf",
+		"onSecondary":             "#042f2e",
+		"secondaryContainer":      "#113b3d",
+		"onSecondaryContainer":    "#99f6e4",
+		"tertiary":                "#818cf8",
+		"onTertiary":              "#1e1b4b",
+		"tertiaryContainer":       "#26255c",
+		"onTertiaryContainer":     "#c7d2fe",
+		"error":                   "#fb7185",
+		"onError":                 "#3b0a17",
+		"errorContainer":          "#4c1121",
+		"onErrorContainer":        "#fecdd3",
+		"outline":                 "#4b6a94",
+		"outlineVariant":          "#1e3860",
+		"background":              "#040812",
+		"onBackground":            "#d8e8ff",
+		"shadow":                  "#010409",
+		"scrim":                   "#010409",
+	},
 	"Catppuccin Mocha": {
 		"surface":                 "#1e1e2e",
 		"onSurface":               "#cdd6f4",
@@ -378,6 +414,7 @@ var themePalettes = map[string]map[string]string{
 // themeCatalogNames lists the static theme names in sorted order, for stable
 // validation of theme.theme and deterministic error messages.
 var themeCatalogNames = []string{
+	"Abyssal",
 	"Catppuccin Mocha",
 	"Dracula",
 	"Everforest Dark Medium",

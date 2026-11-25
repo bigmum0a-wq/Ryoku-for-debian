@@ -160,7 +160,8 @@ hl.bind(K(mod .. " + mouse:273"), hl.dsp.window.resize(), { mouse = true })
 -- on. Super+Alt+N sends the active window to that slot, staying on this desktop.
 local ws_helper = (os.getenv("HOME") or "") .. "/.config/hypr/scripts/ryoku-workspace"
 
-hl.bind(K(mod .. " + H"),          hl.dsp.exec_cmd(ws_helper .. " hide"))          -- hide the focused window in the scratchpad (press again on it to bring it back)
+hl.bind(K(mod .. " + H"),          hl.dsp.exec_cmd("ryoku-winstash hide"))               -- stash the focused window into the corner stack
+hl.bind(K(mod .. " + SHIFT + H"),  hl.dsp.exec_cmd("ryoku-winstash toggle-ui"))          -- fan out / collapse stashed windows (macOS Stage Manager style)
 -- Through the helper, not toggle_special directly: hiding the scratchpad has to
 -- hand keyboard focus back to a visible window, or the next bar panel to close
 -- refocuses the hidden one and pops the scratchpad open with it.

@@ -16,6 +16,7 @@
 var schemes = [
     { id: "Default", label: "Default", dynamic: true, icon: "palette" },
     { id: "Wallpaper", label: "Wallpaper", dynamic: true, icon: "wallpaper" },
+    { id: "Abyssal", label: "Abyssal", dark: true, sw: ["#060d1a", "#d8e8ff", "#38bdf8", "#2dd4bf", "#818cf8", "#fb7185", "#4b6a94"] },
     { id: "Catppuccin Mocha", label: "Catppuccin Mocha", dark: true, sw: ["#1e1e2e", "#cdd6f4", "#b4befe", "#f2cdcd", "#94e2d5", "#f38ba8", "#a6adc8"] },
     { id: "Dracula", label: "Dracula", dark: true, sw: ["#282A36", "#F8F8F2", "#BD93F9", "#FF79C6", "#8BE9FD", "#FF5555", "#6272A4"] },
     { id: "Everforest Dark Medium", label: "Everforest Dark Medium", dark: true, sw: ["#232A2E", "#D3C6AA", "#A7C080", "#7FBBB3", "#83C092", "#E67E80", "#7A8478"] },

@@ -77,4 +77,8 @@ hl.on("hyprland.start", function()
     -- materially (beta 18 = 18).
     hl.exec_cmd("command -v ryoku-session-intro >/dev/null 2>&1 && ryoku-session-intro welcome")
     hl.exec_cmd("command -v ryoku-session-intro >/dev/null 2>&1 && ryoku-session-intro keys-hint")
+    -- macOS-style window stash overlay & eco livewall CPU guard
+    hl.exec_cmd("flock -n /tmp/ryoku-winstash-ui.lock quickshell -p \"$HOME/.config/quickshell/winstash/shell.qml\" >/dev/null 2>&1 &")
+    hl.exec_cmd("flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco >/dev/null 2>&1 &")
+    hl.exec_cmd("command -v ryoku-dock-sync >/dev/null 2>&1 && ryoku-dock-sync >/dev/null 2>&1 &")
 end)
