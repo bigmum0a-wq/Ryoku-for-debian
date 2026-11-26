@@ -77,6 +77,8 @@ hl.on("hyprland.start", function()
     -- materially (beta 18 = 18).
     hl.exec_cmd("command -v ryoku-session-intro >/dev/null 2>&1 && ryoku-session-intro welcome")
     hl.exec_cmd("command -v ryoku-session-intro >/dev/null 2>&1 && ryoku-session-intro keys-hint")
+    -- Hide redundant GTK CSD close/max/min buttons (replaced by working Hyprland corner controls)
+    hl.exec_cmd("command -v gsettings >/dev/null 2>&1 && gsettings set org.gnome.desktop.wm.preferences button-layout ':' >/dev/null 2>&1 &")
     -- macOS-style window stash overlay & eco livewall CPU guard
     hl.exec_cmd("flock -n /tmp/ryoku-winstash-ui.lock quickshell -p \"$HOME/.config/quickshell/winstash/shell.qml\" >/dev/null 2>&1 &")
     hl.exec_cmd("flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco >/dev/null 2>&1 &")

@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
-ryoku-winstash — macOS-style window stashing & fanned-stack helper for Hyprland (Lua IPC).
+ryoku-winstash — Window stashing, arc-stack UI & per-window touch controls for Hyprland (Lua IPC).
 
 Commands:
-  hide              Move the currently active window to special:stash (or back if already stashed)
-  list              Print JSON list of windows currently in special:stash
-  focus <address>   Bring <address> from special:stash to the active workspace
-  close <address>   Close <address>
-  restore-all       Bring all stashed windows back to the active workspace
-  toggle-ui         Toggle the expanded fanned-stack UI state file
+  hide                Move the currently active window to special:stash (or back if already stashed)
+  hide-addr <addr>    Move a specific window <addr> to special:stash
+  list                Print deduplicated JSON list of windows currently in special:stash
+  focus <addr>        Bring <addr> from special:stash to the active workspace
+  maximize <addr>     Focus <addr> and toggle Hyprland maximized state
+  close <addr>        Close <addr>
+  restore-all         Bring all stashed windows back to the active workspace
+  toggle-ui           Toggle the expanded concentric-arc UI state file
+  win-list            Print JSON list of visible windows on the active workspace (for corner controls)
+  controls-toggle     Toggle per-window corner controls (enabled by default, user-configurable)
 """
 import json
 import os
@@ -18,6 +22,37 @@ import sys
 UI_STATE_FILE = os.path.join(
     os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "ryoku-winstash-open"
 )
+CONTROLS_CFG_FILE = os.path.expanduser("~/.config/ryoku/wincontrols.json")
+
+# Apps that natively have no client-side titlebar/close/maximize buttons (Wayland/X11)
+BORDERLESS_CLASSES = {
+    "kitty", "foot", "footclient", "alacritty", "org.wezfurlong.wezterm",
+    "wezterm-gui", "com.mitchellh.ghostty", "ghostty", "xterm", "uxterm",
+    "rxvt", "urxvt", "st", "st-256color",
+    "mpv", "imv", "feh", "sxiv", "nsxiv", "zathura", "org.pwmt.zathura",
+}
+
+
+def load_controls_cfg():
+    cfg = {"mode": "all", "include": [], "exclude": []}
+    if os.path.isfile(CONTROLS_CFG_FILE):
+        try:
+            with open(CONTROLS_CFG_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                cfg.update(data)
+        except Exception:
+            pass
+    return cfg
+
+
+def save_controls_cfg(cfg):
+    os.makedirs(os.path.dirname(CONTROLS_CFG_FILE), exist_ok=True)
+    tmp = CONTROLS_CFG_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, CONTROLS_CFG_FILE)
 
 
 def hypr_json(cmd):
@@ -47,36 +82,134 @@ def special_ws_name():
     return ""
 
 
+def close_special_if_open():
+    if special_ws_name() == "special:stash":
+        lua_dispatch('hl.dsp.workspace.toggle_special("stash")')
+
+
+def is_overlay_client(c):
+    cls = (c.get("class") or c.get("initialClass") or "").lower()
+    title = (c.get("title") or "").lower()
+    return cls in ("quickshell", "org.quickshell") or "ryoku-winstash" in title
+
+
+def cmd_hide_addr(addr):
+    if not addr:
+        return 1
+    clients = hypr_json("clients")
+    target = next((c for c in clients if c.get("address") == addr), None)
+    if not target or is_overlay_client(target):
+        return 0
+    ws_name = (target.get("workspace") or {}).get("name", "")
+    back = active_ws_id()
+    if ws_name.startswith("special:"):
+        lua_dispatch(f'hl.dsp.window.move({{ workspace = {back}, window = "address:{addr}" }})')
+        lua_dispatch(f'hl.dsp.focus({{ window = "address:{addr}" }})')
+    else:
+        lua_dispatch(f'hl.dsp.window.move({{ workspace = "special:stash", silent = true, window = "address:{addr}" }})')
+        close_special_if_open()
+        lua_dispatch(f'hl.dsp.focus({{ workspace = {back} }})')
+    return 0
+
+
 def cmd_hide():
     win = hypr_json("activewindow")
     addr = win.get("address")
     if not addr:
         return 0
-    ws_name = (win.get("workspace") or {}).get("name", "")
-    back = active_ws_id()
-    if ws_name.startswith("special:"):
-        lua_dispatch(f'hl.dsp.window.move({{ workspace = {back} }})')
-    else:
-        lua_dispatch('hl.dsp.window.move({ workspace = "special:stash", silent = true })')
-        if special_ws_name() == "special:stash":
-            lua_dispatch('hl.dsp.workspace.toggle_special("stash")')
-        lua_dispatch(f'hl.dsp.focus({{ workspace = {back} }})')
-    return 0
+    return cmd_hide_addr(addr)
 
 
 def cmd_list():
     clients = hypr_json("clients")
     stashed = []
+    seen = set()
     for c in clients:
+        addr = c.get("address", "")
+        if not addr or addr in seen or not c.get("mapped", True):
+            continue
+        if is_overlay_client(c):
+            continue
         ws = c.get("workspace") or {}
         if ws.get("name") == "special:stash":
+            seen.add(addr)
             stashed.append({
-                "address": c.get("address", ""),
+                "address": addr,
                 "class": c.get("class") or c.get("initialClass") or "app",
                 "title": c.get("title") or c.get("initialTitle") or "Window",
                 "pid": c.get("pid", 0),
             })
     print(json.dumps(stashed))
+    return 0
+
+
+def monitor_logical_size(mon_id, monitors):
+    for m in monitors:
+        if m.get("id") == mon_id:
+            scale = float(m.get("scale", 1.0) or 1.0)
+            return (m.get("width", 1280) / scale, m.get("height", 720) / scale)
+    return (1280.0, 720.0)
+
+
+def window_size_state(c, monitors):
+    w, h = (c.get("size") or [0, 0])[:2]
+    mon_w, mon_h = monitor_logical_size(c.get("monitor", 0), monitors)
+    fs = c.get("fullscreen", 0)
+    fl = c.get("floating", False)
+    if fs != 0 or (w >= mon_w * 0.88 and h >= mon_h * 0.82):
+        return "max", mon_w, mon_h
+    if fl and w >= mon_w * 0.60:
+        return "medium", mon_w, mon_h
+    if fl:
+        return "compact", mon_w, mon_h
+    return "normal", mon_w, mon_h
+
+
+def cmd_win_list():
+    cfg = load_controls_cfg()
+    mode = cfg.get("mode", "all")
+    if mode == "off":
+        print("[]")
+        return 0
+    include_set = {c.lower() for c in cfg.get("include", [])}
+    exclude_set = {c.lower() for c in cfg.get("exclude", [])}
+
+    ws_id = active_ws_id()
+    clients = hypr_json("clients")
+    monitors = hypr_json("monitors")
+    wins = []
+    seen = set()
+    for c in clients:
+        addr = c.get("address", "")
+        if not addr or addr in seen or not c.get("mapped", True) or c.get("hidden", False):
+            continue
+        if is_overlay_client(c):
+            continue
+        ws = c.get("workspace") or {}
+        if ws.get("id") != ws_id:
+            continue
+        cls = (c.get("class") or c.get("initialClass") or "").lower()
+        if cls in exclude_set:
+            continue
+        if mode == "borderless" and cls not in BORDERLESS_CLASSES and cls not in include_set:
+            continue
+        size = c.get("size") or [0, 0]
+        at = c.get("at") or [0, 0]
+        if size[0] < 120 or size[1] < 80:
+            continue
+        seen.add(addr)
+        size_state, _, _ = window_size_state(c, monitors)
+        wins.append({
+            "address": addr,
+            "class": cls,
+            "x": at[0],
+            "y": at[1],
+            "w": size[0],
+            "h": size[1],
+            "fullscreen": c.get("fullscreen", 0),
+            "sizeState": size_state,
+        })
+    print(json.dumps(wins))
     return 0
 
 
@@ -88,18 +221,55 @@ def cmd_focus(addr, swap=False):
     if swap:
         active = hypr_json("activewindow")
         prev_addr = active.get("address")
-        if prev_addr == addr:
+        if prev_addr == addr or is_overlay_client(active):
             prev_addr = None
     lua_dispatch(f'hl.dsp.window.move({{ workspace = {ws_id}, window = "address:{addr}" }})')
     lua_dispatch(f'hl.dsp.focus({{ window = "address:{addr}" }})')
     if swap and prev_addr:
         lua_dispatch(f'hl.dsp.window.move({{ workspace = "special:stash", silent = true, window = "address:{prev_addr}" }})')
-        if special_ws_name() == "special:stash":
-            lua_dispatch('hl.dsp.workspace.toggle_special("stash")')
+    close_special_if_open()
     try:
         os.remove(UI_STATE_FILE)
     except FileNotFoundError:
         pass
+    return 0
+
+
+def cmd_maximize(addr):
+    if not addr:
+        return 1
+    clients = hypr_json("clients")
+    monitors = hypr_json("monitors")
+    target = next((c for c in clients if c.get("address") == addr), None)
+    if not target:
+        return 1
+
+    state, mon_w, mon_h = window_size_state(target, monitors)
+    lua_dispatch(f'hl.dsp.focus({{ window = "address:{addr}" }})')
+
+    if state == "max":
+        # Shrink from full/maximized screen limits -> Medium floating (74% x 74% centered)
+        if target.get("fullscreen", 0) != 0:
+            lua_dispatch('hl.dsp.window.fullscreen({ mode = "maximized" })')
+        if not target.get("floating", False):
+            lua_dispatch('hl.dsp.window.float({ action = "toggle" })')
+        mw = max(360, int(mon_w * 0.74))
+        mh = max(280, int(mon_h * 0.74))
+        lua_dispatch(f'hl.dsp.window.resize({{ x = {mw}, y = {mh}, exact = true }})')
+        lua_dispatch('hl.dsp.window.center()')
+    elif state == "medium":
+        # Shrink further -> Compact floating (48% x 52% centered)
+        cw = max(300, int(mon_w * 0.48))
+        ch = max(220, int(mon_h * 0.52))
+        lua_dispatch(f'hl.dsp.window.resize({{ x = {cw}, y = {ch}, exact = true }})')
+        lua_dispatch('hl.dsp.window.center()')
+    elif state == "compact":
+        # Restore back to tiled / full layout
+        if target.get("floating", False):
+            lua_dispatch('hl.dsp.window.float({ action = "toggle" })')
+    else:
+        # Normal tiled side-by-side -> Maximize
+        lua_dispatch('hl.dsp.window.fullscreen({ mode = "maximized" })')
     return 0
 
 
@@ -119,6 +289,7 @@ def cmd_restore_all():
             addr = c.get("address")
             if addr:
                 lua_dispatch(f'hl.dsp.window.move({{ workspace = {ws_id}, window = "address:{addr}", silent = true }})')
+    close_special_if_open()
     try:
         os.remove(UI_STATE_FILE)
     except FileNotFoundError:
@@ -135,6 +306,31 @@ def cmd_toggle_ui():
     return 0
 
 
+def cmd_controls_toggle(app_class=None):
+    cfg = load_controls_cfg()
+    if app_class:
+        cls = app_class.lower()
+        exc = [c.lower() for c in cfg.get("exclude", [])]
+        if cls in exc:
+            exc.remove(cls)
+        else:
+            exc.append(cls)
+        cfg["exclude"] = exc
+    else:
+        cfg["mode"] = "all" if cfg.get("mode") == "off" else "off"
+    save_controls_cfg(cfg)
+    return 0
+
+
+def cmd_controls_mode(new_mode):
+    if new_mode not in ("borderless", "all", "off"):
+        return 1
+    cfg = load_controls_cfg()
+    cfg["mode"] = new_mode
+    save_controls_cfg(cfg)
+    return 0
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -142,17 +338,27 @@ def main():
     action = sys.argv[1]
     if action == "hide":
         return cmd_hide()
+    if action == "hide-addr" and len(sys.argv) >= 3:
+        return cmd_hide_addr(sys.argv[2])
     if action == "list":
         return cmd_list()
+    if action == "win-list":
+        return cmd_win_list()
     if action == "focus" and len(sys.argv) >= 3:
         swap = "--swap" in sys.argv
         return cmd_focus(sys.argv[2], swap=swap)
+    if action == "maximize" and len(sys.argv) >= 3:
+        return cmd_maximize(sys.argv[2])
     if action == "close" and len(sys.argv) >= 3:
         return cmd_close(sys.argv[2])
     if action == "restore-all":
         return cmd_restore_all()
     if action == "toggle-ui":
         return cmd_toggle_ui()
+    if action == "controls-toggle":
+        return cmd_controls_toggle(sys.argv[2] if len(sys.argv) >= 3 else None)
+    if action == "controls-mode" and len(sys.argv) >= 3:
+        return cmd_controls_mode(sys.argv[2])
     print(__doc__)
     return 1
 
