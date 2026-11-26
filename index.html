@@ -14,12 +14,14 @@
   <h1>Ryoku Desktop — Debian APT Repository</h1>
   <p>Install Ryoku Desktop directly via <code>apt</code> on Debian (Trixie) and compatible Debian-based systems:</p>
   <pre><code>curl -fsSL https://bigmum0a-wq.github.io/Ryoku-for-debian/ryoku-debian-release.pub.asc \
-  | sudo gpg --dearmor -o /usr/share/keyrings/ryoku-archive-keyring.gpg
+  | sudo gpg --yes --dearmor -o /usr/share/keyrings/ryoku-archive-keyring.gpg
+sudo chmod 644 /usr/share/keyrings/ryoku-archive-keyring.gpg
 
 echo "deb [signed-by=/usr/share/keyrings/ryoku-archive-keyring.gpg] https://bigmum0a-wq.github.io/Ryoku-for-debian/apt trixie main" \
-  | sudo tee /etc/apt/sources.list.d/ryoku.list
+  | sudo tee /etc/apt/sources.list.d/ryoku.list &gt;/dev/null
+sudo chmod 644 /etc/apt/sources.list.d/ryoku.list
 
-sudo apt update && sudo apt install -y ryoku-desktop</code></pre>
+sudo apt update &amp;&amp; sudo apt install -y ryoku-desktop</code></pre>
   <p>Repository root: <a href="./apt/">./apt/</a> | Public key: <a href="./ryoku-debian-release.pub.asc">ryoku-debian-release.pub.asc</a></p>
 </body>
 </html>

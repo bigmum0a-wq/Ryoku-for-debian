@@ -1,13 +1,19 @@
-Date: Thu, 26 Nov 2026 00:27:17 +0000
+Architectures: amd64 all
+Codename: trixie
+Components: main
+Date: Thu, 26 Nov 2026 00:57:26 +0000
+Label: Ryoku Debian
+Origin: Ryoku
+Suite: trixie
 MD5Sum:
- a2c35e38ef76c474f18da842ab86faef             3756 main/binary-amd64/Packages
- 89a0dd91ee06256759466f0b50f51d7a             1467 main/binary-amd64/Packages.gz
+ 85bffd0ce429d4b6841c40f0cb84c357             3756 main/binary-amd64/Packages
+ 38d55e055413d448bbb5ca5041e1afc5             1463 main/binary-amd64/Packages.gz
 SHA1:
- de8a5b6e85295057d36313a8418e890ad031d250             3756 main/binary-amd64/Packages
- 92a6be5180b32a42705e98006e93b811b0e10a61             1467 main/binary-amd64/Packages.gz
+ b31ee46e600e4cb083687fb5a1f6f32458c7ff90             3756 main/binary-amd64/Packages
+ 04a50e98526741e2414d49f3f982424298149eec             1463 main/binary-amd64/Packages.gz
 SHA256:
- 906a774363fba9bc68956941ebce29806bcf6baf64ec7e07331903374978767a             3756 main/binary-amd64/Packages
- 37e1b5aa9cf2b85459d8adbcb72e8eb827c7748b225974e09efe5ff2b71c0390             1467 main/binary-amd64/Packages.gz
+ 37f09811cbfa7863cff0d76fac8c6eb4a29414c0c382679e39d38f56e15b2d74             3756 main/binary-amd64/Packages
+ 809ac4de629e04784f788a9296aea047d6e5b86738c3b1a4bba6c05ebaf61e2d             1463 main/binary-amd64/Packages.gz
 SHA512:
- d28b7650079629325e4bc5de6fe6514db722b1662e6a12c05b0e4f07ec77899058759bfaa43805dbd245ee41133c377d09a3b51411f5ed55a6829e987e6a12c7             3756 main/binary-amd64/Packages
- 97c27d126bc468b23dcfa616e631950486bc1828e50d6a6de61ce1f33ba93836ef08069ba8920c5c0ca221f3c28c6c116b1de5ce5450deb266b3c917bcc0f63d             1467 main/binary-amd64/Packages.gz
+ 716ff1e4c0949a113d95e3d3690b88b50729bb19f25c5ac416d46e2158d640e65b85a5c770bc15efe6a38bc37d8702ca463ef5b769b3a2518067cf4bfd4aa63c             3756 main/binary-amd64/Packages
+ 5a36f7c4e9808e2b23a8f2b3708663c150beb02144b5e55c5b3352cfb6c57ce347d6555958dea3309f91c0c21743d9f23b324caa0a8dd0cdafdcfcea648c3f71             1463 main/binary-amd64/Packages.gz

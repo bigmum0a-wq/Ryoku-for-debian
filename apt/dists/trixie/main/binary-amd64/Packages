@@ -4,10 +4,10 @@ Architecture: all
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: gpg
 Filename: pool/main/r/ryoku/ryoku-archive-keyring_1.2.3-1_all.deb
-Size: 1288
-MD5sum: 59714a14e8e6453b0e032faffa7b7ba4
-SHA1: e17a4e341affd62c91aefa94de96fe5a4437e80a
-SHA256: dc27b8afff34deb8a7c7d64a3e6cd84ea78a39681495bf4192e81c2fb1d03dec
+Size: 1286
+MD5sum: a63dd8afbd54044ae432f14b43f84ab4
+SHA1: 9272f60a2935646da14b9f0dc5d30daaf2713203
+SHA256: 5f8809d22d0ffd458934e2401ffbade72b6bc1094db14b46f35ece0f466d8c04
 Section: x11
 Priority: optional
 Description: GnuPG archive key and apt sources list for Ryoku Debian repository
@@ -18,10 +18,10 @@ Architecture: amd64
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: quickshell
 Filename: pool/main/r/ryoku/ryoku-blobs_1.2.3-1_amd64.deb
-Size: 3540
-MD5sum: 67a7a9b5e31718fbfc866fbb8c81cffe
-SHA1: a30391ab6827ce9508f906851431b919f9fb9a4a
-SHA256: c9947b1bb49a8b182f7845d1474ec5df9d5deff3c27b097f21b57999e758c266
+Size: 3548
+MD5sum: efbdd1943ac8d642d912ff7ff946dba9
+SHA1: 7190a6f10aed7c0ad945591888b266b8a6480708
+SHA256: 5951bf9ab0f97d529e8fe69110104d8d72a67dbb087787198ee0dc601d00a509
 Section: x11
 Priority: optional
 Description: Ryoku Blobs and Spatial3D QML components
@@ -32,10 +32,10 @@ Architecture: amd64
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: apt, dpkg, systemd
 Filename: pool/main/r/ryoku/ryoku-cli_1.2.3-1_amd64.deb
-Size: 4735638
-MD5sum: bfd7b0180730c6981027a29e03d3d7a6
-SHA1: d5ef46b0bbdce16902d9870157f3561bf5e4f179
-SHA256: dd3586f4b9d7967c2a2bf2d4e038d54e054b3efa75122ec22323a0dc47d89d7c
+Size: 4736206
+MD5sum: a516abd05f97ea051d3e6155c47d95ba
+SHA1: c796e1bb55d626393a8d2fb1d69ee6289e0c6ef9
+SHA256: b6fc27440c6d13debf15f462946fc5462d99a5936b650245fc593ad9dc8a465d
 Section: x11
 Priority: optional
 Description: Ryoku Desktop Control Plane and Host Abstraction
@@ -46,10 +46,10 @@ Architecture: amd64
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: ryoku-cli (>= 1.2.3-1), ryoku-shell (>= 1.2.3-1), ryoku-palette-bridge (>= 1.2.3-1), ryoku-blobs (>= 1.2.3-1), ryoku-desktop-hyprland (>= 1.2.3-1), qml6-module-qtquick3d, wireplumber, pipewire, grim, slurp, wl-clipboard, tesseract-ocr, playerctl, cava, hyprpicker, hyprsunset, hypridle, ffmpeg, mpv, jq, socat, gnome-keyring, libsecret-1-0, xdg-desktop-portal-gtk, qt6ct, papirus-icon-theme
 Filename: pool/main/r/ryoku/ryoku-desktop_1.2.3-1_amd64.deb
-Size: 52287816
-MD5sum: be5a9b4b33ce17c9d51acfa077bc9a59
-SHA1: 0eecda9022d715abd85936140b7f58837ee64cb1
-SHA256: e7cb3228f35352baa4bc2018f61d2b13f686eb56ddb56ad82d241737b34a8f3d
+Size: 52286230
+MD5sum: 4312242ad7a9c52b25a989258c5a97f7
+SHA1: 3b13056394bd1e6fa9dc94637c45a6dbf435fd68
+SHA256: dab875428f85959e3e2b844fadcfaf33c8dab703d6bcaf1ee2c81ec7dc45e28a
 Section: x11
 Priority: optional
 Description: Ryoku Desktop Environment (metapackage and system configuration)
@@ -60,10 +60,10 @@ Architecture: amd64
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: hyprland, ryoku-shell
 Filename: pool/main/r/ryoku/ryoku-desktop-hyprland_1.2.3-1_amd64.deb
-Size: 1563126
-MD5sum: 7043ac240163a3a89e46cb168d732189
-SHA1: beabd0f0cac987095881c507062e96274d6c2d55
-SHA256: aaa72befe3c2d0162de2862367e0b4fbcc55bc6c4c206428f724d993045de90a
+Size: 1563078
+MD5sum: 6b31dcfecc0454fda1cb92af7cb1851a
+SHA1: d7f9a922153457841451dbd1695cc53d802734a9
+SHA256: f11d8d85b95afef389629c67224300b83d406cbef4054a7c0146398e20e25000
 Section: x11
 Priority: optional
 Description: Ryoku Desktop Hyprland compositor integration and configuration
@@ -74,10 +74,10 @@ Architecture: amd64
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: ryoku-cli
 Filename: pool/main/r/ryoku/ryoku-palette-bridge_1.2.3-1_amd64.deb
-Size: 2306270
-MD5sum: eaeb1481cb15301470921246a2d33850
-SHA1: 7f6f1e1bc6edb8593c580e0b3d17a2b19f2a0a53
-SHA256: 5a89273c61bc5e56facd9eb0d9349e44bee40d9c54610ef8bb63bd2cbdf69cd9
+Size: 2306076
+MD5sum: 53dc513b86764a26ddddfd2b6ec09611
+SHA1: 9c1a849fdc9838afdb9ecc6289237526ca28c0ff
+SHA256: 37bc9e1b46cc751449cc2614e05b09bea273ad17ac02c627d414f50e0831199c
 Section: x11
 Priority: optional
 Description: Ryoku Palette Bridge for dynamic wallpaper-derived color sync
@@ -88,10 +88,10 @@ Architecture: amd64
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: quickshell, bash
 Filename: pool/main/r/ryoku/ryoku-shell_1.2.3-1_amd64.deb
-Size: 19154380
-MD5sum: ea6c46f3efae0db65a58269803282f0c
-SHA1: 6ba87767bd6472301dfbcc1ff865d226d8bab543
-SHA256: b8f931009c502074f21662cb784b092ae0961cd8312ff062d8d4c0de6536c7f2
+Size: 19154168
+MD5sum: 4bc9728c67f7bdb6ce48258b97bbe1e5
+SHA1: 65f2b32df1f976f57c0f2b9cff945ac52846665b
+SHA256: 7014318583764bfa26cfa246d3ed85730ef4ec6013d4450e2a92b25943ca2085
 Section: x11
 Priority: optional
 Description: Ryoku Desktop Shell IPC and supervision daemon
