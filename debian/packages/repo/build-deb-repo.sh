@@ -219,7 +219,14 @@ dpkg-scanpackages --multiversion pool/ > "$DISTS_DIR/Packages"
 gzip -9c "$DISTS_DIR/Packages" > "$DISTS_DIR/Packages.gz"
 
 # Generate Release metadata
-apt-ftparchive release "$OUT_DIR/dists/$SUITE" > "$WORK_DIR/Release.tmp"
+apt-ftparchive \
+  -o APT::FTPArchive::Release::Origin="Ryoku" \
+  -o APT::FTPArchive::Release::Label="Ryoku Debian" \
+  -o APT::FTPArchive::Release::Suite="$SUITE" \
+  -o APT::FTPArchive::Release::Codename="$SUITE" \
+  -o APT::FTPArchive::Release::Architectures="$ARCH all" \
+  -o APT::FTPArchive::Release::Components="main" \
+  release "$OUT_DIR/dists/$SUITE" > "$WORK_DIR/Release.tmp"
 cat "$WORK_DIR/Release.tmp" > "$OUT_DIR/dists/$SUITE/Release"
 
 # Sign Release (Release.gpg + InRelease) and pool SHA256SUMS if signing key is available

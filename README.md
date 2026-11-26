@@ -140,10 +140,12 @@ This fork (`debian/port`) adapts Ryoku Desktop for **Debian** (targeting `trixie
 
 ```bash
 curl -fsSL https://bigmum0a-wq.github.io/Ryoku-for-debian/ryoku-debian-release.pub.asc \
-  | sudo gpg --dearmor -o /usr/share/keyrings/ryoku-archive-keyring.gpg
+  | sudo gpg --yes --dearmor -o /usr/share/keyrings/ryoku-archive-keyring.gpg
+sudo chmod 644 /usr/share/keyrings/ryoku-archive-keyring.gpg
 
 echo "deb [signed-by=/usr/share/keyrings/ryoku-archive-keyring.gpg] https://bigmum0a-wq.github.io/Ryoku-for-debian/apt trixie main" \
-  | sudo tee /etc/apt/sources.list.d/ryoku.list
+  | sudo tee /etc/apt/sources.list.d/ryoku.list >/dev/null
+sudo chmod 644 /etc/apt/sources.list.d/ryoku.list
 
 sudo apt update && sudo apt install -y ryoku-desktop
 ryoku materialize
