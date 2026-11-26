@@ -1,0 +1,23 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Date: Thu, 26 Nov 2026 00:27:17 +0000
+MD5Sum:
+ a2c35e38ef76c474f18da842ab86faef             3756 main/binary-amd64/Packages
+ 89a0dd91ee06256759466f0b50f51d7a             1467 main/binary-amd64/Packages.gz
+SHA1:
+ de8a5b6e85295057d36313a8418e890ad031d250             3756 main/binary-amd64/Packages
+ 92a6be5180b32a42705e98006e93b811b0e10a61             1467 main/binary-amd64/Packages.gz
+SHA256:
+ 906a774363fba9bc68956941ebce29806bcf6baf64ec7e07331903374978767a             3756 main/binary-amd64/Packages
+ 37e1b5aa9cf2b85459d8adbcb72e8eb827c7748b225974e09efe5ff2b71c0390             1467 main/binary-amd64/Packages.gz
+SHA512:
+ d28b7650079629325e4bc5de6fe6514db722b1662e6a12c05b0e4f07ec77899058759bfaa43805dbd245ee41133c377d09a3b51411f5ed55a6829e987e6a12c7             3756 main/binary-amd64/Packages
+ 97c27d126bc468b23dcfa616e631950486bc1828e50d6a6de61ce1f33ba93836ef08069ba8920c5c0ca221f3c28c6c116b1de5ce5450deb266b3c917bcc0f63d             1467 main/binary-amd64/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iIoEARYKADIWIQS1KxZH7dzda4gBaXsTzgkKTuRK2wUCawd85RQccGFja2FnaW5n
+QHJ5b2t1LmRldgAKCRATzgkKTuRK29wGAQCpZX2i63qKBbKValZ+7+dp4yjNYarT
+J9RJ8d3hdJgyBAD7Bj7eVwuDaEhNf74VVSjWpWRpMDoNQ07SZ0/KwwtcQwU=
+=TOXx
+-----END PGP SIGNATURE-----
