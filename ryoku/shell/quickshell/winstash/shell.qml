@@ -12,6 +12,19 @@ ShellRoot {
     property string lastRaw: ""
     readonly property string stateFile: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/ryoku-winstash-open"
 
+    function resolveAppInfo(appClass) {
+        var cls = (appClass || "").trim();
+        if (!cls)
+            return { name: "Application", icon: Quickshell.iconPath("application-x-executable") };
+        var entry = DesktopEntries.heuristicLookup(cls);
+        if (!entry)
+            entry = DesktopEntries.byId(cls);
+        var displayName = (entry && entry.name) ? entry.name : cls;
+        var iconName = (entry && entry.icon) ? entry.icon : cls.toLowerCase();
+        var resolved = Quickshell.iconPath(iconName, "application-x-executable");
+        return { name: displayName, icon: resolved };
+    }
+
     function refresh() {
         if (!listProc.running)
             listProc.running = true;
@@ -87,6 +100,10 @@ ShellRoot {
                 delegate: Rectangle {
                     required property int index
                     readonly property int rev: Math.min(4, root.stashed.length) - 1 - index
+                    readonly property var topInfo: root.stashed.length > 0
+                        ? root.resolveAppInfo(root.stashed[0]["class"])
+                        : ({ name: "", icon: "" })
+
                     width: 86
                     height: 68
                     x: 16 + rev * 7
@@ -103,13 +120,26 @@ ShellRoot {
                         visible: rev === 0
                         spacing: 4
 
-                        Text {
-                            text: root.stashed.length > 0 ? (root.stashed[0]["class"] || "app") : ""
-                            color: "#e2e8f0"
-                            font.pixelSize: 11
-                            font.bold: true
-                            elide: Text.ElideRight
+                        RowLayout {
                             Layout.fillWidth: true
+                            spacing: 5
+                            Image {
+                                source: topInfo.icon
+                                width: 16
+                                height: 16
+                                sourceSize.width: 16
+                                sourceSize.height: 16
+                                fillMode: Image.PreserveAspectFit
+                                visible: source !== ""
+                            }
+                            Text {
+                                text: topInfo.name
+                                color: "#e2e8f0"
+                                font.pixelSize: 11
+                                font.bold: true
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
                         }
                         Text {
                             text: root.stashed.length > 0 ? (root.stashed[0].title || "") : ""
@@ -151,7 +181,7 @@ ShellRoot {
         }
     }
 
-    // Expanded: container-free floating cards fanned across the screen; click anywhere outside to collapse
+    // Expanded: concentric-ring floating cards starting right beside the click point; click outside to collapse
     PanelWindow {
         id: expandedWin
         visible: root.stashed.length > 0 && root.expanded
@@ -169,8 +199,8 @@ ShellRoot {
         property real animProgress: 0
         readonly property real originX: width - 96
         readonly property real originY: height - 84
-        readonly property int cardW: 156
-        readonly property int cardH: 88
+        readonly property int cardW: 152
+        readonly property int cardH: 82
 
         onVisibleChanged: {
             if (visible) {
@@ -189,7 +219,7 @@ ShellRoot {
             to: 1
             duration: 240
             easing.type: Easing.OutBack
-            easing.overshoot: 1.15
+            easing.overshoot: 1.12
         }
 
         // Subtle click-anywhere backdrop to collapse back into the corner stack
@@ -204,54 +234,42 @@ ShellRoot {
             }
         }
 
+        // Pack cards into concentric arcs from innermost (capacity 2) outward (3, 4, 5, ...)
         function cardLayout(idx, total) {
             var cx = expandedWin.originX;
             var cy = expandedWin.originY;
 
-            if (total <= 4) {
-                var r = 140 + Math.max(0, total - 1) * 68;
-                var theta = (total === 1)
-                    ? (Math.PI * 1.25)
-                    : (Math.PI * (1.04 + (idx / (total - 1)) * 0.42));
-                var rot = (total === 1) ? -4 : (-10 + (idx / (total - 1)) * 18);
-                return {
-                    x: cx + r * Math.cos(theta) - cardW / 2,
-                    y: cy + r * Math.sin(theta) - cardH / 2,
-                    rot: rot
-                };
+            var ring = 0;
+            var ringStart = 0;
+            var ringCap = 2;
+            while (idx >= ringStart + ringCap) {
+                ringStart += ringCap;
+                ring += 1;
+                ringCap = ring + 2;
             }
 
-            if (total <= 8) {
-                if (idx < 3) {
-                    var r1 = 245;
-                    var t1 = Math.PI * (1.06 + (idx / 2) * 0.38);
-                    return {
-                        x: cx + r1 * Math.cos(t1) - cardW / 2,
-                        y: cy + r1 * Math.sin(t1) - cardH / 2,
-                        rot: -8 + (idx / 2) * 14
-                    };
-                }
-                var outerN = total - 3;
-                var outerIdx = idx - 3;
-                var r2 = 410;
-                var t2 = (outerN === 1)
-                    ? (Math.PI * 1.25)
-                    : (Math.PI * (1.03 + (outerIdx / (outerN - 1)) * 0.44));
-                return {
-                    x: cx + r2 * Math.cos(t2) - cardW / 2,
-                    y: cy + r2 * Math.sin(t2) - cardH / 2,
-                    rot: (outerN === 1) ? 0 : (-10 + (outerIdx / (outerN - 1)) * 18)
-                };
+            var posInRing = idx - ringStart;
+            var remaining = total - ringStart;
+            var countInRing = Math.min(ringCap, remaining);
+
+            var r = 165 + ring * 112;
+            var theta;
+            var rot;
+            if (countInRing === 1) {
+                theta = Math.PI * 1.25;
+                rot = -3;
+            } else {
+                var frac = posInRing / (countInRing - 1);
+                theta = Math.PI * (1.05 + frac * 0.40);
+                rot = -8 + frac * 14;
             }
 
-            // 9+ windows: neat floating grid radiating up-left, still without any container box
-            var cols = 4;
-            var col = idx % cols;
-            var row = Math.floor(idx / cols);
+            var rawX = cx + r * Math.cos(theta) - cardW / 2;
+            var rawY = cy + r * Math.sin(theta) - cardH / 2;
             return {
-                x: Math.max(24, expandedWin.width - 190 - col * (cardW + 14)),
-                y: Math.max(24, expandedWin.height - 150 - row * (cardH + 14)),
-                rot: ((idx % 3) - 1) * 2
+                x: Math.max(16, Math.min(expandedWin.width - cardW - 16, rawX)),
+                y: Math.max(16, Math.min(expandedWin.height - cardH - 16, rawY)),
+                rot: rot
             };
         }
 
@@ -264,6 +282,7 @@ ShellRoot {
                 required property int index
 
                 readonly property var pos: expandedWin.cardLayout(index, root.stashed.length)
+                readonly property var appInfo: root.resolveAppInfo(modelData["class"])
                 readonly property real startX: expandedWin.originX - expandedWin.cardW / 2
                 readonly property real startY: expandedWin.originY - expandedWin.cardH / 2
 
@@ -303,24 +322,20 @@ ShellRoot {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 6
+                        spacing: 7
 
-                        Rectangle {
+                        Image {
+                            source: card.appInfo.icon
                             width: 24
                             height: 24
-                            radius: 7
-                            color: "#2b38bdf8"
-                            Text {
-                                anchors.centerIn: parent
-                                text: (modelData["class"] || "?").substring(0, 2).toUpperCase()
-                                color: "#7dd3fc"
-                                font.pixelSize: 10
-                                font.bold: true
-                            }
+                            sourceSize.width: 24
+                            sourceSize.height: 24
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
                         }
 
                         Text {
-                            text: modelData["class"] || "Application"
+                            text: card.appInfo.name
                             color: "#f1f5f9"
                             font.pixelSize: 12
                             font.bold: true
@@ -369,7 +384,7 @@ ShellRoot {
             anchors.bottom: parent.bottom
             anchors.rightMargin: 20
             anchors.bottomMargin: 22
-            width: 92
+            width: 96
             height: 30
             radius: 15
             color: restoreMa.containsMouse ? "#e616324f" : "#cc0d1b2e"
