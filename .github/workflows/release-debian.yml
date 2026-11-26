@@ -83,36 +83,8 @@ jobs:
           mkdir -p gh-pages-stage/apt
           cp -r debian/packages/repo/out/* gh-pages-stage/apt/
           cp keys/ryoku-debian-release.pub.asc gh-pages-stage/ryoku-debian-release.pub.asc
+          cp debian/packages/repo/pages-index.html gh-pages-stage/index.html
           touch gh-pages-stage/.nojekyll
-          cat << 'HTML' > gh-pages-stage/index.html
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="utf-8">
-            <title>Ryoku Desktop — Debian APT Repository</title>
-            <style>
-              body { font-family: system-ui, sans-serif; max-width: 760px; margin: 3rem auto; padding: 0 1.2rem; background: #0d1117; color: #e6edf3; line-height: 1.6; }
-              pre { background: #161b22; padding: 1rem; border-radius: 8px; overflow-x: auto; border: 1px solid #30363d; }
-              code { font-family: monospace; color: #79c0ff; }
-              a { color: #58a6ff; }
-            </style>
-          </head>
-          <body>
-            <h1>Ryoku Desktop — Debian APT Repository</h1>
-            <p>Install Ryoku Desktop directly via <code>apt</code> on Debian (Trixie) and compatible Debian-based systems:</p>
-            <pre><code>curl -fsSL https://bigmum0a-wq.github.io/Ryoku-for-debian/ryoku-debian-release.pub.asc \
-  | sudo gpg --yes --dearmor -o /usr/share/keyrings/ryoku-archive-keyring.gpg
-sudo chmod 644 /usr/share/keyrings/ryoku-archive-keyring.gpg
-
-echo "deb [signed-by=/usr/share/keyrings/ryoku-archive-keyring.gpg] https://bigmum0a-wq.github.io/Ryoku-for-debian/apt trixie main" \
-  | sudo tee /etc/apt/sources.list.d/ryoku.list &gt;/dev/null
-sudo chmod 644 /etc/apt/sources.list.d/ryoku.list
-
-sudo apt update &amp;&amp; sudo apt install -y ryoku-desktop</code></pre>
-            <p>Repository root: <a href="./apt/">./apt/</a> | Public key: <a href="./ryoku-debian-release.pub.asc">ryoku-debian-release.pub.asc</a></p>
-          </body>
-          </html>
-          HTML
 
       - name: Deploy APT repository to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
