@@ -54,7 +54,7 @@ ShellRoot {
         actionProc.running = true;
     }
 
-    // ─── Collapsed: stacked cards in bottom-right corner ─────────────────────
+    // ─── Collapsed: stacked miniature cards in bottom-right corner ───────────
     PanelWindow {
         id: collapsedWin
         visible: root.stashed.length > 0 && !root.expanded
@@ -68,7 +68,6 @@ ShellRoot {
 
         Item {
             anchors.fill: parent
-
             Repeater {
                 model: Math.min(4, root.stashed.length)
                 delegate: Rectangle {
@@ -76,6 +75,7 @@ ShellRoot {
                     readonly property int rev: Math.min(4, root.stashed.length) - 1 - index
                     readonly property var topInfo: root.stashed.length > 0
                         ? root.resolveAppInfo(root.stashed[0]["class"]) : ({ name: "", icon: "" })
+                    // ── CARD DIMENSIONS: 86 × 68 px — reference size ───────────
                     width: 86; height: 68
                     x: 16 + rev * 7; y: 16 + rev * 5
                     rotation: (rev - 1) * 3.5; radius: 12
@@ -85,36 +85,33 @@ ShellRoot {
 
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 8
-                        visible: rev === 0; spacing: 4
+                        visible: rev === 0; spacing: 3
                         RowLayout {
                             Layout.fillWidth: true; spacing: 5
                             Image {
-                                source: topInfo.icon
-                                width: 16; height: 16
-                                sourceSize.width: 16; sourceSize.height: 16
+                                source: topInfo.icon; width: 14; height: 14
+                                sourceSize.width: 14; sourceSize.height: 14
                                 fillMode: Image.PreserveAspectFit
                             }
                             Text {
                                 text: topInfo.name; color: "#e2e8f0"
-                                font.pixelSize: 11; font.bold: true
+                                font.pixelSize: 10; font.bold: true
                                 elide: Text.ElideRight; Layout.fillWidth: true
                             }
                         }
                         Text {
                             text: root.stashed.length > 0 ? (root.stashed[0].title || "") : ""
-                            color: "#94a3b8"; font.pixelSize: 9; elide: Text.ElideRight
+                            color: "#94a3b8"; font.pixelSize: 8; elide: Text.ElideRight
                             maximumLineCount: 2; wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
                     }
                 }
             }
-
             Rectangle {
                 anchors { top: parent.top; right: parent.right; topMargin: 8; rightMargin: 8 }
-                width: 24; height: 24; radius: 12; color: "#38bdf8"
-                Text { anchors.centerIn: parent; text: root.stashed.length; color: "#061529"; font.pixelSize: 12; font.bold: true }
+                width: 22; height: 22; radius: 11; color: "#38bdf8"
+                Text { anchors.centerIn: parent; text: root.stashed.length; color: "#061529"; font.pixelSize: 11; font.bold: true }
             }
-
             MouseArea {
                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                 onClicked: root.runAction(["toggle-ui"])
@@ -122,14 +119,21 @@ ShellRoot {
         }
     }
 
-    // ─── Expanded: Adaptive Concentric Arc Layout (quarter-circle, 90°) ───────
+    // ─── Expanded: Adaptive Concentric Arc Layout ─────────────────────────────
     //
-    //  Origin of arcs = bottom-right corner of screen (cx, cy) = (W, H).
-    //  Sector angle   = 90° from straight-left (θ=180°) to straight-up (θ=270°).
-    //  Each arc's capacity = floor( (π/2) / ((cardW + gap) / r) )
-    //    → capacity grows with radius, never hard-coded.
-    //  Cards fill the innermost arc first, then overflow to the next.
-    //  Each card is tangentially aligned: its long axis follows the arc tangent.
+    //  Three independent operations (never mixed):
+    //    1. DIMENSIONING  — fixed 86 × 68 px, identical to the collapsed stack card.
+    //                       Never changed, never scaled, not on hover, not at any arc.
+    //    2. POSITIONING   — computed on concentric arcs:
+    //                         origin  = bottom-right corner (W, H)
+    //                         sector  = 90°  [θ = π … 3π/2]  (left → up)
+    //                         arc r   = rStart + ring × rStep
+    //                         capacity(r) = ⌊(π/2) / ((cW+gap)/r)⌋   — never hardcoded
+    //    3. ORIENTATION   — common geometric rule for all cards:
+    //                         The card's bottom-right corner always points toward
+    //                         the arc origin (screen corner).
+    //                         rotDeg = atan2(−sinθ, −cosθ)·180/π − atan2(cH/2, cW/2)·180/π
+    //                               ≈  varies from −38° (θ=π) to +52° (θ=3π/2)
     //
     PanelWindow {
         id: expandedWin
@@ -140,15 +144,14 @@ ShellRoot {
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "ryoku-winstash-fan"
 
-        // Card dimensions (px)
-        readonly property int cardW: 148
-        readonly property int cardH: 80
-        // Minimum angular gap between two cards, expressed in screen-px at the arc radius
-        readonly property int cardGap: 14
-        // Innermost arc radius (px from corner). Enough to clear the stacked-card UI.
-        readonly property int rStart: 165
-        // Radial distance between successive arcs. Must be ≥ cardH + gap to avoid overlap.
-        readonly property int rStep: 108
+        // ══ 1. DIMENSIONING — absolutely fixed ════════════════════════════════
+        readonly property int cardW:   86    // px — matches collapsed stack card width
+        readonly property int cardH:   68    // px — matches collapsed stack card height
+        // ══ 2. ARC GEOMETRY ══════════════════════════════════════════════════
+        readonly property int cardGap: 10    // minimum tangential gap between cards (px at arc)
+        readonly property int rStart:  140   // inner arc radius (px) — clears the stack UI
+        readonly property int rStep:   125   // radial pitch between arcs (px)
+                                             // ≥ radial card extent + gap at any θ (~110 px)
 
         property real animProgress: 0
 
@@ -161,89 +164,70 @@ ShellRoot {
             id: burstAnim
             target: expandedWin; property: "animProgress"
             from: 0; to: 1; duration: 300
-            easing.type: Easing.OutBack; easing.overshoot: 1.1
+            easing.type: Easing.OutBack; easing.overshoot: 1.08
         }
 
-        // ── Core layout algorithm ─────────────────────────────────────────────
-        // Returns { x, y, rot } for card at index `idx` among `total` cards.
-        //
-        //  Sector: θ ∈ [π, 3π/2]  (180° → 270° in screen/math convention, Y-down)
-        //    θ = π     → card is directly to the LEFT  of the corner
-        //    θ = 3π/2  → card is directly ABOVE the corner
-        //    θ = 5π/4  → diagonal (centre of the sector)
-        //
-        //  Card position:
-        //    cx = screen_width + r·cos(θ)   → goes left as θ → π
-        //    cy = screen_height + r·sin(θ)  → goes up  as θ → 3π/2
-        //
-        //  Tangential rotation:
-        //    The long axis of the card (width direction) must align with the arc tangent.
-        //    Arc tangent at θ: perpendicular to radius = angle (θ + π/2).
-        //    In QML clockwise degrees: rotDeg = θ_deg − 270°
-        //      θ=180° → rot=−90° (card is vertical)
-        //      θ=270° → rot=0°   (card is horizontal)
-        //      θ=225° → rot=−45° (card is diagonal)
-        //
+        // ── Core layout function ───────────────────────────────────────────────
+        // Returns { x, y, rot } for card at position `idx` among `total`.
+        // All three operations (position, rotation, dimensions) are independent.
         function arcLayout(idx, total) {
-            var cx        = expandedWin.width;
-            var cy        = expandedWin.height;
-            var cW        = expandedWin.cardW;
-            var cH        = expandedWin.cardH;
-            var gap       = expandedWin.cardGap;
-            var r0        = expandedWin.rStart;
-            var rS        = expandedWin.rStep;
-            var sector    = Math.PI / 2;           // 90° in radians
-            var thetaMin  = Math.PI;               // 180° — straight left
-            var thetaMax  = Math.PI * 1.5;         // 270° — straight up
+            var cW       = expandedWin.cardW;
+            var cH       = expandedWin.cardH;
+            var gap      = expandedWin.cardGap;
+            var r0       = expandedWin.rStart;
+            var rS       = expandedWin.rStep;
+            var sector   = Math.PI / 2;     // 90° — fixed sector angle
+            var thetaMin = Math.PI;          // 180° — straight left of origin
+            var thetaMax = Math.PI * 1.5;    // 270° — straight above origin
 
+            // ── 2. POSITIONING: find ring and angular position ─────────────────
             var ring = 0, placed = 0;
-
             while (ring < 20) {
                 var r   = r0 + ring * rS;
-                // Capacity: number of cards that fit on this arc without overlapping
+                // Adaptive capacity: how many fixed-size cards fit on this arc.
+                // Derived from arc length in the sector vs. card angular footprint.
                 var cap = Math.max(1, Math.floor(sector / ((cW + gap) / r)));
 
                 if (idx < placed + cap) {
                     var posInRing = idx - placed;
-                    var theta;
+                    // Distribute cards evenly from thetaMin to thetaMax inclusive.
+                    // Single card → midpoint of sector.
+                    var theta = (cap === 1)
+                        ? (thetaMin + thetaMax) / 2
+                        : thetaMin + (posInRing / (cap - 1)) * sector;
 
-                    if (cap === 1) {
-                        // Single card → centre of the sector
-                        theta = (thetaMin + thetaMax) / 2;
-                    } else {
-                        // Distribute evenly: first card at thetaMin, last at thetaMax
-                        theta = thetaMin + (posInRing / (cap - 1)) * sector;
-                    }
+                    // ── 3. ORIENTATION: bottom-right corner → origin ───────────
+                    // Unrotated, the card's bottom-right corner is at angle:
+                    var baseDeg   = Math.atan2(cH / 2, cW / 2) * 180 / Math.PI; // ≈ 38.3°
+                    // Direction from card centre toward the arc origin, in screen space
+                    // (Y-down): vector (−cosθ, −sinθ), angle = atan2(−sinθ, −cosθ).
+                    var targetDeg = Math.atan2(-Math.sin(theta), -Math.cos(theta)) * 180 / Math.PI;
+                    // Required QML clockwise rotation:
+                    var rotDeg = targetDeg - baseDeg;
 
-                    // Tangential alignment
-                    var rotDeg = (theta * 180 / Math.PI) - 270;
+                    // Card top-left corner (x, y) so that the card centre sits on the arc
+                    var rawX = expandedWin.width  + r * Math.cos(theta) - cW / 2;
+                    var rawY = expandedWin.height + r * Math.sin(theta) - cH / 2;
 
-                    // Card centre position on the arc
-                    var rawX = cx + r * Math.cos(theta) - cW / 2;
-                    var rawY = cy + r * Math.sin(theta) - cH / 2;
-
-                    // Clamp to stay within screen (generous 20 px inset)
+                    // Safety clamp — keep cards on-screen even on small displays
                     rawX = Math.max(20, Math.min(expandedWin.width  - cW - 20, rawX));
                     rawY = Math.max(20, Math.min(expandedWin.height - cH - 20, rawY));
 
                     return { x: rawX, y: rawY, rot: rotDeg };
                 }
-
                 placed += cap;
                 ring++;
             }
-
-            // Safety fallback (shouldn't be reached for realistic window counts)
-            return { x: 60, y: 60, rot: 0 };
+            return { x: 60, y: 60, rot: 0 }; // unreachable fallback
         }
 
-        // Transparent backdrop — click anywhere outside the cards to collapse
+        // Click-away backdrop (dismiss the fan)
         Rectangle {
             anchors.fill: parent; color: "#28040914"; opacity: expandedWin.animProgress
             MouseArea { anchors.fill: parent; onClicked: root.runAction(["toggle-ui"]) }
         }
 
-        // ── Individual floating cards ────────────────────────────────────────
+        // ── Miniature arc cards ────────────────────────────────────────────────
         Repeater {
             model: root.stashed
             delegate: Rectangle {
@@ -254,26 +238,26 @@ ShellRoot {
                 readonly property var layout:  expandedWin.arcLayout(index, root.stashed.length)
                 readonly property var appInfo: root.resolveAppInfo(modelData["class"])
 
-                // Burst animation: cards originate from the stacked-card position (corner)
+                // Burst: cards fly from the bottom-right corner to their arc position.
+                // Only x, y, rotation and opacity are animated — NEVER width/height.
                 readonly property real cornerX: expandedWin.width  - expandedWin.cardW / 2
                 readonly property real cornerY: expandedWin.height - expandedWin.cardH / 2
 
-                width: expandedWin.cardW; height: expandedWin.cardH
-                x: cornerX + (layout.x - cornerX) * expandedWin.animProgress
-                y: cornerY + (layout.y - cornerY) * expandedWin.animProgress
+                // ══ DIMENSIONS: fixed — never touched ══════════════════════════
+                width:  expandedWin.cardW   // 86 px — constant
+                height: expandedWin.cardH   // 68 px — constant
+                // scale is intentionally absent (defaults to 1.0 — never scaled)
+
+                x:        cornerX + (layout.x - cornerX) * expandedWin.animProgress
+                y:        cornerY + (layout.y - cornerY) * expandedWin.animProgress
                 rotation: layout.rot * expandedWin.animProgress
-                scale:    (0.45 + 0.55 * expandedWin.animProgress) * (cardMa.containsMouse ? 1.09 : 1.0)
-                opacity:  Math.min(1, expandedWin.animProgress * 1.5)
+                opacity:  Math.min(1.0, expandedWin.animProgress * 1.6)
                 z: cardMa.containsMouse ? 30 : (10 + index)
 
-                radius: 14
+                radius: 12
                 color: cardMa.containsMouse ? "#f0132540" : "#ea0d1729"
                 border.width: 1
                 border.color: cardMa.containsMouse ? "#a038bdf8" : "#4038bdf8"
-
-                Behavior on scale {
-                    NumberAnimation { duration: 130; easing.type: Easing.OutCubic }
-                }
 
                 MouseArea {
                     id: cardMa; anchors.fill: parent; hoverEnabled: true
@@ -282,28 +266,27 @@ ShellRoot {
                 }
 
                 ColumnLayout {
-                    anchors.fill: parent; anchors.margins: 9; spacing: 4
+                    anchors.fill: parent; anchors.margins: 8; spacing: 3
 
+                    // Icon + name on the same row
                     RowLayout {
-                        Layout.fillWidth: true; spacing: 7
-
+                        Layout.fillWidth: true; spacing: 5
                         Image {
                             source: card.appInfo.icon
-                            width: 22; height: 22
-                            sourceSize.width: 22; sourceSize.height: 22
+                            width: 14; height: 14
+                            sourceSize.width: 14; sourceSize.height: 14
                             fillMode: Image.PreserveAspectFit; smooth: true
                         }
-
                         Text {
                             text: card.appInfo.name
-                            color: "#f1f5f9"; font.pixelSize: 11; font.bold: true
+                            color: "#f1f5f9"; font.pixelSize: 10; font.bold: true
                             elide: Text.ElideRight; Layout.fillWidth: true
                         }
-
+                        // Close button
                         Rectangle {
-                            width: 18; height: 18; radius: 6
+                            width: 15; height: 15; radius: 4
                             color: delMa.containsMouse ? "#55fb7185" : "#22fb7185"
-                            Text { anchors.centerIn: parent; text: "✕"; color: "#fda4af"; font.pixelSize: 9 }
+                            Text { anchors.centerIn: parent; text: "✕"; color: "#fda4af"; font.pixelSize: 8 }
                             MouseArea {
                                 id: delMa; anchors.fill: parent; hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
@@ -312,9 +295,10 @@ ShellRoot {
                         }
                     }
 
+                    // Window title (truncated to remaining height)
                     Text {
                         text: modelData.title || ""
-                        color: "#94a3b8"; font.pixelSize: 9
+                        color: "#94a3b8"; font.pixelSize: 8
                         elide: Text.ElideRight; maximumLineCount: 2; wrapMode: Text.Wrap
                         Layout.fillWidth: true; Layout.fillHeight: true
                     }
@@ -322,10 +306,10 @@ ShellRoot {
             }
         }
 
-        // "Tout ouvrir" pill — floats near the origin corner, unobtrusive
+        // "Tout ouvrir" pill — small floating button near the corner
         Rectangle {
-            anchors { right: parent.right; bottom: parent.bottom; rightMargin: 20; bottomMargin: 22 }
-            width: 100; height: 30; radius: 15
+            anchors { right: parent.right; bottom: parent.bottom; rightMargin: 20; bottomMargin: 24 }
+            width: 94; height: 26; radius: 13
             color: restoreMa.containsMouse ? "#e616324f" : "#cc0d1b2e"
             border.width: 1; border.color: "#6038bdf8"
             opacity: expandedWin.animProgress
@@ -333,7 +317,7 @@ ShellRoot {
             Text {
                 anchors.centerIn: parent
                 text: "Tout ouvrir (" + root.stashed.length + ")"
-                color: "#7dd3fc"; font.pixelSize: 10; font.bold: true
+                color: "#7dd3fc"; font.pixelSize: 9; font.bold: true
             }
             MouseArea {
                 id: restoreMa; anchors.fill: parent; hoverEnabled: true
