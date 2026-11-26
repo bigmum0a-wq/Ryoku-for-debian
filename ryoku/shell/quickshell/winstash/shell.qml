@@ -47,7 +47,7 @@ ShellRoot {
                 var raw = (this.text || "").trim();
                 var sep = raw.indexOf("\n---WINLIST---\n");
                 var stashPart = sep >= 0 ? raw.slice(0, sep) : raw;
-                var winPart = sep >= 0 ? raw.slice(sep + 14).trim() : "[]";
+                var winPart = sep >= 0 ? raw.slice(sep + 15).trim() : "[]";
 
                 var lines = stashPart.split("\n");
                 if (lines.length >= 2) {
@@ -93,6 +93,7 @@ ShellRoot {
         property Component regionComp: Component { Region {} }
 
         function rebuildMask() {
+            var oldRegs = controlsMask.regions;
             var regs = [];
             for (var i = 0; i < pillRepeater.count; i++) {
                 var it = pillRepeater.itemAt(i);
@@ -101,6 +102,9 @@ ShellRoot {
                 }
             }
             controlsMask.regions = regs;
+            for (var j = 0; j < oldRegs.length; j++) {
+                if (oldRegs[j]) oldRegs[j].destroy();
+            }
         }
 
         mask: Region {
@@ -302,8 +306,8 @@ ShellRoot {
         readonly property int cardW:   86
         readonly property int cardH:   68
         readonly property int cardGap: 10
-        readonly property int rStart:  Math.round(Math.min(width, height) * 0.09)
-        readonly property int rStep:   Math.round(Math.min(width, height) * 0.11)
+        readonly property int rStart:  Math.max(145, Math.round(Math.min(width, height) * 0.19))
+        readonly property int rStep:   Math.max(120, Math.round(Math.min(width, height) * 0.15))
 
         property real animProgress: 0
         property bool inputReady: false

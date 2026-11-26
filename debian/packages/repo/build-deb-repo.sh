@@ -207,9 +207,20 @@ for helper_bin in "$REPO_ROOT/debian/packages/bin/"*; do
   [ -f "$helper_bin" ] || continue
   install -Dm755 "$helper_bin" "$DESKTOP_DIR/usr/bin/$(basename "$helper_bin")"
 done
+mkdir -p "$DESKTOP_DIR/etc/xdg/autostart"
+cat << 'EOF' > "$DESKTOP_DIR/etc/xdg/autostart/ryoku-session-guard.desktop"
+[Desktop Entry]
+Type=Application
+Name=Ryoku Session Guard
+Comment=Stop Ryoku daemons and restore clean DE styles when running a non-Hyprland desktop
+Exec=/usr/bin/ryoku-session-guard enter-other
+NotShowIn=Hyprland;
+NoDisplay=true
+X-GNOME-Autostart-Phase=Initialization
+EOF
 find "$DESKTOP_DIR/usr/share/ryoku" \( -name "README.md" -o -name "__pycache__" -o -name "*.pyc" \) -exec rm -rf {} + 2>/dev/null || true
 package_deb "ryoku-desktop" "$ARCH" \
-  "ryoku-cli (>= $PKGVER), ryoku-shell (>= $PKGVER), ryoku-palette-bridge (>= $PKGVER), ryoku-blobs (>= $PKGVER), ryoku-desktop-hyprland (>= $PKGVER), qml6-module-qtquick3d, wireplumber, pipewire, grim, slurp, wl-clipboard, tesseract-ocr, playerctl, cava, hyprpicker, hyprsunset, hypridle, ffmpeg, mpv, jq, socat, gnome-keyring, libsecret-1-0, xdg-desktop-portal-gtk, qt6ct, papirus-icon-theme" \
+  "ryoku-cli (>= $PKGVER), ryoku-shell (>= $PKGVER), ryoku-palette-bridge (>= $PKGVER), ryoku-blobs (>= $PKGVER), ryoku-desktop-hyprland (>= $PKGVER), qml6-module-qtquick3d, wireplumber, pipewire, grim, slurp, wl-clipboard, tesseract-ocr, playerctl, cava, hyprpicker, hyprsunset, hypridle, ffmpeg, mpv, jq, socat, python3, gnome-keyring, libsecret-1-0, xdg-desktop-portal-gtk, xdg-desktop-portal-hyprland, x11-xserver-utils, libglib2.0-bin, dbus-user-session, qt6ct, papirus-icon-theme" \
   "Ryoku Desktop Environment (metapackage and system configuration)" "$DESKTOP_DIR"
 
 # 8. Index packages into repository

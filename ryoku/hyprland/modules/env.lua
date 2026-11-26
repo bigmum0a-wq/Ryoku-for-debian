@@ -2,6 +2,10 @@ hl.env("XCURSOR_THEME",     "Bibata-Modern-Ice")
 hl.env("XCURSOR_SIZE",      "24")
 hl.env("HYPRCURSOR_THEME",  "Bibata-Modern-Ice")
 hl.env("HYPRCURSOR_SIZE",   "24")
+hl.env("XDG_CURRENT_DESKTOP", "Hyprland")
+hl.env("XDG_SESSION_DESKTOP", "Hyprland")
+hl.env("XDG_SESSION_TYPE",    "wayland")
+hl.env("NO_AT_BRIDGE",        "1")
 
 -- VA-API/GLX hints are nvidia-only, and forcing them when an iGPU drives the
 -- panel freezes video decode on hybrid laptops (#55); set them only when nvidia

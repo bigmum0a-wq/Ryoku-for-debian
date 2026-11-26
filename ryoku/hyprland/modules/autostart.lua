@@ -1,5 +1,7 @@
 -- The Hyprland provider's login bootstrap; a second compositor ships its own.
 hl.on("hyprland.start", function()
+    -- Isolate session: stop conflicting KDE/third-party desktop daemons and back up shared configs
+    hl.exec_cmd("command -v ryoku-session-guard >/dev/null 2>&1 && ryoku-session-guard enter-ryoku >/dev/null 2>&1 || true")
     -- Start the GNOME keyring's secrets + pkcs11 agents before anything that
     -- might ask for a stored secret, and propagate env to systemd/D-Bus.
     hl.exec_cmd("systemctl --user start gnome-keyring-daemon.service 2>/dev/null || true")
@@ -10,7 +12,8 @@ hl.on("hyprland.start", function()
     -- strips WAYLAND_DISPLAY, falls back to DISPLAY, and crashes with
     -- "Authorization required, but no authorization protocol specified".
     hl.exec_cmd("command -v xhost >/dev/null 2>&1 && xhost +si:localuser:root >/dev/null 2>&1 || true")
-    hl.exec_cmd("systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP 2>/dev/null || true")
+    hl.exec_cmd("systemctl --user import-environment HYPRLAND_INSTANCE_SIGNATURE DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE NO_AT_BRIDGE 2>/dev/null || true")
+    hl.exec_cmd("dbus-update-activation-environment --systemd HYPRLAND_INSTANCE_SIGNATURE DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE NO_AT_BRIDGE >/dev/null 2>&1 || true")
     hl.exec_cmd("ryoku-wm-hyprland act cursor.set Bibata-Modern-Ice 24")
     hl.exec_cmd("gsettings set org.gnome.desktop.interface color-scheme prefer-dark")
     -- adw-gtk3-dark, not Adwaita-dark: stock Adwaita GTK3 hardcodes its colours,
@@ -25,6 +28,7 @@ hl.on("hyprland.start", function()
     -- The shared entrypoint keeps this config init-neutral while preserving
     -- the ordered environment handoff and stale-session restart on every
     -- supported service supervisor.
+    hl.exec_cmd("systemctl --user stop xdg-desktop-portal-kde.service 2>/dev/null || true")
     hl.exec_cmd("ryoku-host session start xdg-desktop-portal-hyprland.service xdg-desktop-portal-gtk.service")
     -- Polkit authentication is answered by the shell's own agent (the island
     -- that matches the rest of the desktop), so the stock Qt agent must not

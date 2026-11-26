@@ -166,6 +166,8 @@ ryoku materialize
 
 3. Log out and select the **Hyprland** session on your display manager. Press **`Super + ,`** to open Settings (`ryoku-hub`).
 
+For a full reinstall guide (online script, offline tarball, or building from source + full dependency list), see [debian-port/INSTALL.md](debian-port/INSTALL.md) and [debian-port/install-deps.sh](debian-port/install-deps.sh).
+
 ## The desktop
 
 <table>

@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# ryoku-session-guard — Prevent desktop environment interference between Ryoku (Hyprland)
+# and third-party desktop sessions (KDE Plasma, GNOME, XFCE, etc.).
+#
+# Usage:
+#   ryoku-session-guard enter-ryoku   # Stop conflicting KDE/third-party DE daemons & apply Ryoku session look
+#   ryoku-session-guard enter-other   # Stop Ryoku daemons & restore clean KDE/GTK look when in another DE
+#   ryoku-session-guard auto          # Auto-detect current session and run the appropriate guard
+set -u
+
+ACTION="${1:-auto}"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ryoku/session-guard"
+CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+is_ryoku_session() {
+  [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && return 0
+  case "${XDG_CURRENT_DESKTOP:-}:${XDG_SESSION_DESKTOP:-}" in
+    *Hyprland*|*hyprland*|*Ryoku*|*ryoku*) return 0 ;;
+  esac
+  return 1
+}
+
+backup_file_once() {
+  local src="$1"
+  local name="$2"
+  mkdir -p "$CACHE_DIR"
+  if [ -f "$src" ] && [ ! -f "$CACHE_DIR/$name.pre-ryoku" ]; then
+    cp -a "$src" "$CACHE_DIR/$name.pre-ryoku" 2>/dev/null || true
+  fi
+}
+
+restore_file_if_ryoku() {
+  local dst="$1"
+  local name="$2"
+  local marker="$3"
+  if [ -f "$dst" ] && grep -q "$marker" "$dst" 2>/dev/null; then
+    if [ -f "$CACHE_DIR/$name.pre-ryoku" ]; then
+      cp -a "$CACHE_DIR/$name.pre-ryoku" "$dst" 2>/dev/null || true
+    fi
+  fi
+}
+
+enter_ryoku() {
+  # 1. Stop conflicting KDE / GNOME / third-party desktop daemons & portals
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user stop \
+      xdg-desktop-portal-kde.service \
+      xdg-desktop-portal-gnome.service \
+      plasma-plasmashell.service \
+      plasma-kglobalaccel.service \
+      plasma-polkit-agent.service \
+      plasma-kded6.service \
+      plasma-xembedsniproxy.service \
+      plasma-gmenudbusmenuproxy.service \
+      2>/dev/null || true
+  fi
+
+  pkill -u "${USER:-$(id -un)}" -x \
+    plasmashell kglobalacceld kded6 xembedsniproxy gmenudbusmenuproxy \
+    xdg-desktop-portal-kde xdg-desktop-portal-gnome \
+    2>/dev/null || true
+
+  # 2. Back up original KDE/GTK files once before Ryoku styles touch them
+  backup_file_once "$CFG_DIR/kdeglobals" "kdeglobals"
+  backup_file_once "$CFG_DIR/Kvantum/kvantum.kvconfig" "kvantum.kvconfig"
+  backup_file_once "$CFG_DIR/gtk-3.0/settings.ini" "gtk3-settings.ini"
+  backup_file_once "$CFG_DIR/gtk-4.0/settings.ini" "gtk4-settings.ini"
+  backup_file_once "$CFG_DIR/gtk-3.0/gtk.css" "gtk3.css"
+  backup_file_once "$CFG_DIR/gtk-4.0/gtk.css" "gtk4.css"
+
+  # 3. Apply Ryoku GTK button-layout (hide redundant GTK CSD buttons in Hyprland)
+  if command -v gsettings >/dev/null 2>&1; then
+    gsettings set org.gnome.desktop.wm.preferences button-layout ':' 2>/dev/null || true
+  fi
+  for f in "$CFG_DIR/gtk-3.0/settings.ini" "$CFG_DIR/gtk-4.0/settings.ini"; do
+    if [ -f "$f" ]; then
+      if grep -q '^gtk-decoration-layout=' "$f" 2>/dev/null; then
+        sed -i 's/^gtk-decoration-layout=.*/gtk-decoration-layout=:/' "$f" 2>/dev/null || true
+      else
+        printf '\ngtk-decoration-layout=:\n' >> "$f" 2>/dev/null || true
+      fi
+    fi
+  done
+}
+
+enter_other() {
+  # 1. Stop all Ryoku systemd user units & background daemons
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user stop \
+      ryoku-session.target \
+      ryoku-shell.service \
+      ryoku-rashin.service \
+      ryoku-idle.service \
+      ryoku-eq.service \
+      ryoku-clamshell.service \
+      ryoku-bt-agent.service \
+      ryoku-bootstrap.service \
+      xdg-desktop-portal-hyprland.service \
+      mako.service \
+      2>/dev/null || true
+  fi
+
+  pkill -u "${USER:-$(id -un)}" -x \
+    quickshell ryoku-shell ryoku-hub ryogami ryogami-live \
+    hypridle hyprsunset hyprpicker ryoku-livewall-eco ryoku-bt-audio \
+    mako dunst swaync \
+    2>/dev/null || true
+  pkill -u "${USER:-$(id -un)}" -f "quickshell.*winstash" 2>/dev/null || true
+
+  # 2. Restore normal GTK window buttons so third-party DEs (KDE/GNOME/XFCE) are unaffected
+  if command -v gsettings >/dev/null 2>&1; then
+    gsettings set org.gnome.desktop.wm.preferences button-layout 'close,maximize,minimize:' 2>/dev/null || true
+  fi
+  for f in "$CFG_DIR/gtk-3.0/settings.ini" "$CFG_DIR/gtk-4.0/settings.ini"; do
+    if [ -f "$f" ]; then
+      sed -i '/^gtk-decoration-layout=:/d' "$f" 2>/dev/null || true
+    fi
+  done
+
+  # 3. Restore pre-Ryoku KDE/Kvantum/GTK CSS if RyokuDynamic was injected into shared files
+  restore_file_if_ryoku "$CFG_DIR/kdeglobals" "kdeglobals" "RyokuDynamic"
+  restore_file_if_ryoku "$CFG_DIR/Kvantum/kvantum.kvconfig" "kvantum.kvconfig" "RyokuDynamic"
+  restore_file_if_ryoku "$CFG_DIR/gtk-3.0/gtk.css" "gtk3.css" "colors.css"
+  restore_file_if_ryoku "$CFG_DIR/gtk-4.0/gtk.css" "gtk4.css" "colors.css"
+
+  # Fallback if no backup existed and kdeglobals/kvantum still points to RyokuDynamic
+  if [ -f "$CFG_DIR/kdeglobals" ] && grep -q "RyokuDynamic" "$CFG_DIR/kdeglobals" 2>/dev/null; then
+    sed -i 's/RyokuDynamic/BreezeDark/g' "$CFG_DIR/kdeglobals" 2>/dev/null || true
+  fi
+  if [ -f "$CFG_DIR/Kvantum/kvantum.kvconfig" ] && grep -q "RyokuDynamic" "$CFG_DIR/Kvantum/kvantum.kvconfig" 2>/dev/null; then
+    sed -i 's/RyokuDynamic/KvArcDark/g' "$CFG_DIR/Kvantum/kvantum.kvconfig" 2>/dev/null || true
+  fi
+}
+
+case "$ACTION" in
+  enter-ryoku) enter_ryoku ;;
+  enter-other) enter_other ;;
+  auto)
+    if is_ryoku_session; then
+      enter_ryoku
+    else
+      enter_other
+    fi
+    ;;
+  *)
+    echo "Usage: $0 {enter-ryoku|enter-other|auto}" >&2
+    exit 2
+    ;;
+esac
