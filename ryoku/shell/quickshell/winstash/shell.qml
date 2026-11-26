@@ -59,9 +59,10 @@ ShellRoot {
         actionProc.running = true;
     }
 
+    // Collapsed: macOS-style fanned card stack ("billets glissés de côté") in bottom-right
     PanelWindow {
-        id: win
-        visible: root.stashed.length > 0
+        id: collapsedWin
+        visible: root.stashed.length > 0 && !root.expanded
         anchors {
             right: true
             bottom: true
@@ -75,13 +76,11 @@ ShellRoot {
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "ryoku-winstash"
 
-        implicitWidth: root.expanded ? 320 : 128
-        implicitHeight: root.expanded ? Math.min(520, 68 + root.stashed.length * 64) : 104
+        implicitWidth: 128
+        implicitHeight: 104
 
-        // Collapsed: macOS-style fanned card stack ("billets glissés de côté")
         Item {
             anchors.fill: parent
-            visible: !root.expanded
 
             Repeater {
                 model: Math.min(4, root.stashed.length)
@@ -150,156 +149,248 @@ ShellRoot {
                 onClicked: root.runAction(["toggle-ui"])
             }
         }
+    }
 
-        // Expanded: fanned list of stashed windows with focus-swap & close
+    // Expanded: container-free floating cards fanned across the screen; click anywhere outside to collapse
+    PanelWindow {
+        id: expandedWin
+        visible: root.stashed.length > 0 && root.expanded
+        anchors {
+            top: true
+            bottom: true
+            left: true
+            right: true
+        }
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.namespace: "ryoku-winstash-fan"
+
+        property real animProgress: 0
+        readonly property real originX: width - 96
+        readonly property real originY: height - 84
+        readonly property int cardW: 156
+        readonly property int cardH: 88
+
+        onVisibleChanged: {
+            if (visible) {
+                animProgress = 0;
+                burstAnim.restart();
+            } else {
+                animProgress = 0;
+            }
+        }
+
+        NumberAnimation {
+            id: burstAnim
+            target: expandedWin
+            property: "animProgress"
+            from: 0
+            to: 1
+            duration: 240
+            easing.type: Easing.OutBack
+            easing.overshoot: 1.15
+        }
+
+        // Subtle click-anywhere backdrop to collapse back into the corner stack
         Rectangle {
             anchors.fill: parent
-            visible: root.expanded
-            radius: 16
-            color: "#ec0b1322"
-            border.width: 1
-            border.color: "#5538bdf8"
+            color: "#30040914"
+            opacity: expandedWin.animProgress
 
-            ColumnLayout {
+            MouseArea {
                 anchors.fill: parent
-                anchors.margins: 12
-                spacing: 8
+                onClicked: root.runAction(["toggle-ui"])
+            }
+        }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    Text {
-                        text: "Fenêtres rangées (" + root.stashed.length + ")"
-                        color: "#e2e8f0"
-                        font.pixelSize: 13
-                        font.bold: true
+        function cardLayout(idx, total) {
+            var cx = expandedWin.originX;
+            var cy = expandedWin.originY;
+
+            if (total <= 4) {
+                var r = 140 + Math.max(0, total - 1) * 68;
+                var theta = (total === 1)
+                    ? (Math.PI * 1.25)
+                    : (Math.PI * (1.04 + (idx / (total - 1)) * 0.42));
+                var rot = (total === 1) ? -4 : (-10 + (idx / (total - 1)) * 18);
+                return {
+                    x: cx + r * Math.cos(theta) - cardW / 2,
+                    y: cy + r * Math.sin(theta) - cardH / 2,
+                    rot: rot
+                };
+            }
+
+            if (total <= 8) {
+                if (idx < 3) {
+                    var r1 = 245;
+                    var t1 = Math.PI * (1.06 + (idx / 2) * 0.38);
+                    return {
+                        x: cx + r1 * Math.cos(t1) - cardW / 2,
+                        y: cy + r1 * Math.sin(t1) - cardH / 2,
+                        rot: -8 + (idx / 2) * 14
+                    };
+                }
+                var outerN = total - 3;
+                var outerIdx = idx - 3;
+                var r2 = 410;
+                var t2 = (outerN === 1)
+                    ? (Math.PI * 1.25)
+                    : (Math.PI * (1.03 + (outerIdx / (outerN - 1)) * 0.44));
+                return {
+                    x: cx + r2 * Math.cos(t2) - cardW / 2,
+                    y: cy + r2 * Math.sin(t2) - cardH / 2,
+                    rot: (outerN === 1) ? 0 : (-10 + (outerIdx / (outerN - 1)) * 18)
+                };
+            }
+
+            // 9+ windows: neat floating grid radiating up-left, still without any container box
+            var cols = 4;
+            var col = idx % cols;
+            var row = Math.floor(idx / cols);
+            return {
+                x: Math.max(24, expandedWin.width - 190 - col * (cardW + 14)),
+                y: Math.max(24, expandedWin.height - 150 - row * (cardH + 14)),
+                rot: ((idx % 3) - 1) * 2
+            };
+        }
+
+        // Floating individual cards (no enclosing container)
+        Repeater {
+            model: root.stashed
+            delegate: Rectangle {
+                id: card
+                required property var modelData
+                required property int index
+
+                readonly property var pos: expandedWin.cardLayout(index, root.stashed.length)
+                readonly property real startX: expandedWin.originX - expandedWin.cardW / 2
+                readonly property real startY: expandedWin.originY - expandedWin.cardH / 2
+
+                width: expandedWin.cardW
+                height: expandedWin.cardH
+                x: startX + (pos.x - startX) * expandedWin.animProgress
+                y: startY + (pos.y - startY) * expandedWin.animProgress
+                rotation: cardMa.containsMouse ? 0 : pos.rot * expandedWin.animProgress
+                scale: (0.55 + 0.45 * expandedWin.animProgress) * (cardMa.containsMouse ? 1.07 : 1.0)
+                z: cardMa.containsMouse ? 30 : (10 + index)
+                opacity: Math.min(1, expandedWin.animProgress * 1.35)
+
+                radius: 14
+                color: cardMa.containsMouse ? "#f2132540" : "#e80d1729"
+                border.width: 1
+                border.color: cardMa.containsMouse ? "#9938bdf8" : "#4438bdf8"
+
+                Behavior on scale {
+                    NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+                }
+                Behavior on rotation {
+                    NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+                }
+
+                MouseArea {
+                    id: cardMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.runAction(["focus", modelData.address, "--swap"])
+                }
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 4
+
+                    RowLayout {
                         Layout.fillWidth: true
-                    }
-                    Rectangle {
-                        width: 78
-                        height: 24
-                        radius: 8
-                        color: restoreMa.containsMouse ? "#3338bdf8" : "#1f38bdf8"
+                        spacing: 6
+
+                        Rectangle {
+                            width: 24
+                            height: 24
+                            radius: 7
+                            color: "#2b38bdf8"
+                            Text {
+                                anchors.centerIn: parent
+                                text: (modelData["class"] || "?").substring(0, 2).toUpperCase()
+                                color: "#7dd3fc"
+                                font.pixelSize: 10
+                                font.bold: true
+                            }
+                        }
+
                         Text {
-                            anchors.centerIn: parent
-                            text: "Tout ouvrir"
-                            color: "#7dd3fc"
-                            font.pixelSize: 10
+                            text: modelData["class"] || "Application"
+                            color: "#f1f5f9"
+                            font.pixelSize: 12
                             font.bold: true
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
                         }
-                        MouseArea {
-                            id: restoreMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.runAction(["restore-all"])
+
+                        Rectangle {
+                            width: 20
+                            height: 20
+                            radius: 6
+                            color: delMa.containsMouse ? "#55fb7185" : "#22fb7185"
+                            Text {
+                                anchors.centerIn: parent
+                                text: "✕"
+                                color: "#fda4af"
+                                font.pixelSize: 10
+                            }
+                            MouseArea {
+                                id: delMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.runAction(["close", modelData.address])
+                            }
                         }
                     }
-                    Rectangle {
-                        width: 24
-                        height: 24
-                        radius: 8
-                        color: closeUiMa.containsMouse ? "#33ffffff" : "#18ffffff"
-                        Text {
-                            anchors.centerIn: parent
-                            text: "✕"
-                            color: "#cbd5e1"
-                            font.pixelSize: 11
-                        }
-                        MouseArea {
-                            id: closeUiMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.runAction(["toggle-ui"])
-                        }
-                    }
-                }
 
-                ListView {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    spacing: 6
-                    model: root.stashed
-                    delegate: Rectangle {
-                        required property var modelData
-                        width: ListView.view.width
-                        height: 56
-                        radius: 10
-                        color: cardMa.containsMouse ? "#2838bdf8" : "#18ffffff"
-                        border.width: 1
-                        border.color: cardMa.containsMouse ? "#8038bdf8" : "#22ffffff"
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 8
-
-                            Rectangle {
-                                width: 32
-                                height: 32
-                                radius: 8
-                                color: "#2638bdf8"
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: (modelData["class"] || "?").substring(0, 2).toUpperCase()
-                                    color: "#7dd3fc"
-                                    font.pixelSize: 12
-                                    font.bold: true
-                                }
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
-                                Text {
-                                    text: modelData["class"] || "Application"
-                                    color: "#f1f5f9"
-                                    font.pixelSize: 12
-                                    font.bold: true
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                }
-                                Text {
-                                    text: modelData.title || ""
-                                    color: "#94a3b8"
-                                    font.pixelSize: 10
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                }
-                            }
-
-                            Rectangle {
-                                width: 24
-                                height: 24
-                                radius: 6
-                                color: delMa.containsMouse ? "#44fb7185" : "#18fb7185"
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "✕"
-                                    color: "#fda4af"
-                                    font.pixelSize: 11
-                                }
-                                MouseArea {
-                                    id: delMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.runAction(["close", modelData.address])
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            id: cardMa
-                            anchors.fill: parent
-                            anchors.rightMargin: 34
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.runAction(["focus", modelData.address, "--swap"])
-                        }
+                    Text {
+                        text: modelData.title || ""
+                        color: "#94a3b8"
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
+                        maximumLineCount: 2
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
                     }
                 }
+            }
+        }
+
+        // Small floating "Tout ouvrir" pill in the corner (no enclosing box)
+        Rectangle {
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.rightMargin: 20
+            anchors.bottomMargin: 22
+            width: 92
+            height: 30
+            radius: 15
+            color: restoreMa.containsMouse ? "#e616324f" : "#cc0d1b2e"
+            border.width: 1
+            border.color: "#6638bdf8"
+            opacity: expandedWin.animProgress
+
+            Text {
+                anchors.centerIn: parent
+                text: "Tout ouvrir (" + root.stashed.length + ")"
+                color: "#7dd3fc"
+                font.pixelSize: 10
+                font.bold: true
+            }
+
+            MouseArea {
+                id: restoreMa
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.runAction(["restore-all"])
             }
         }
     }
