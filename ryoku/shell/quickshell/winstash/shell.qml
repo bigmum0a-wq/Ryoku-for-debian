@@ -147,11 +147,12 @@ ShellRoot {
         // ══ 1. DIMENSIONING — absolutely fixed ════════════════════════════════
         readonly property int cardW:   86    // px — matches collapsed stack card width
         readonly property int cardH:   68    // px — matches collapsed stack card height
-        // ══ 2. ARC GEOMETRY ══════════════════════════════════════════════════
+        // ══ 2. ARC GEOMETRY — relative to screen size, never hardcoded ════════
         readonly property int cardGap: 10    // minimum tangential gap between cards (px at arc)
-        readonly property int rStart:  140   // inner arc radius (px) — clears the stack UI
-        readonly property int rStep:   125   // radial pitch between arcs (px)
-                                             // ≥ radial card extent + gap at any θ (~110 px)
+        // Inner arc radius: 9% of the shorter screen dimension (clears stack UI on any screen)
+        readonly property int rStart:  Math.round(Math.min(width, height) * 0.09)
+        // Radial pitch: 11% of shorter screen dimension — always > card radial extent + gap
+        readonly property int rStep:   Math.round(Math.min(width, height) * 0.11)
 
         property real animProgress: 0
 
