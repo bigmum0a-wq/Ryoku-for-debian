@@ -1,19 +1,19 @@
-# Ryoku for Debian — Guide de réinstallation & dépendances
+# Ryoku for Debian — Reinstallation & Dependencies Guide
 
-Ce guide explique comment réinstaller **Ryoku Desktop** proprement sur une nouvelle installation de **Debian 13 (Trixie)** ou d'un système compatible basé sur Debian (`amd64`).
+This guide explains how to cleanly install or reinstall **Ryoku Desktop** on a fresh **Debian 13 (Trixie)** or Debian-based (`amd64`) system.
 
 ---
 
-## Méthode 1 — Installation complète en ligne (via le dépôt APT)
+## Method 1 — Full Online Installation (via APT Repository)
 
-### Option rapide (script automatique)
+### Quick option (automated script)
 ```bash
 git clone https://github.com/bigmum0a-wq/Ryoku-for-debian.git
 cd Ryoku-for-debian
 bash debian-port/install-deps.sh
 ```
 
-### Option manuelle (3 commandes sans cloner le dépôt)
+### Manual option (3 commands without cloning the repository)
 ```bash
 curl -fsSL https://bigmum0a-wq.github.io/Ryoku-for-debian/ryoku-debian-release.pub.asc \
   | sudo gpg --yes --dearmor -o /usr/share/keyrings/ryoku-archive-keyring.gpg
@@ -27,18 +27,18 @@ sudo apt-get update && sudo apt-get install -y ryoku-desktop
 ryoku materialize
 ```
 
-> Une fois `ryoku-archive-keyring` installé, `/etc/apt/sources.list.d/ryoku.sources` est configuré automatiquement ; tu peux supprimer `/etc/apt/sources.list.d/ryoku.list` pour éviter les doublons dans `apt update`.
+> Once `ryoku-archive-keyring` is installed, `/etc/apt/sources.list.d/ryoku.sources` is configured automatically; you can remove `/etc/apt/sources.list.d/ryoku.list` to avoid duplicate entries during `apt update`.
 
 ---
 
-## Méthode 2 — Réinstallation hors ligne (clé USB / archive `.tar.gz`)
+## Method 2 — Offline Reinstallation (USB Drive / `.tar.gz` Archive)
 
-1. Télécharge `ryoku-deb-repo-<version>.tar.gz` depuis [GitHub Releases](https://github.com/bigmum0a-wq/Ryoku-for-debian/releases).
-2. Installe les dépendances système (si tu as internet uniquement pour APT Debian, ou depuis ton miroir local) :
+1. Download `ryoku-deb-repo-<version>.tar.gz` from [GitHub Releases](https://github.com/bigmum0a-wq/Ryoku-for-debian/releases).
+2. Install system dependencies (if you have internet access for Debian APT only, or from a local mirror):
    ```bash
    bash debian-port/install-deps.sh --deps-only
    ```
-3. Extrais et installe les 7 paquets `.deb` :
+3. Extract and install the 7 `.deb` packages:
    ```bash
    tar -xzf ryoku-deb-repo-*.tar.gz
    sudo dpkg -i out/pool/main/r/ryoku/ryoku-archive-keyring_*.deb
@@ -49,37 +49,37 @@ ryoku materialize
 
 ---
 
-## Méthode 3 — Recompiler les paquets `.deb` depuis les sources
+## Method 3 — Build `.deb` Packages from Source
 
-1. Installe les dépendances de compilation :
+1. Install build dependencies:
    ```bash
    bash debian-port/install-deps.sh --build
    ```
-   *(Assure-toi d'avoir **Go 1.26+** installé dans ton `PATH` pour compiler `ryoku-shell` et `ryoku-hub`.)*
-2. Compile le dépôt APT complet :
+   *(Make sure **Go 1.26+** is installed in your `PATH` to compile `ryoku-shell` and `ryoku-hub`.)*
+2. Build the full APT repository:
    ```bash
    umask 0022
    bash debian/packages/repo/build-deb-repo.sh
    ```
-   Les paquets générés se trouvent dans `debian/packages/repo/out/`.
+   Generated packages will be placed in `debian/packages/repo/out/`.
 
 ---
 
-## Liste des dépendances système
+## System Dependencies List
 
-- **Compositeur & Shell :** `hyprland`, `quickshell`, `qml6-module-qtquick3d`
-- **Portails & Session D-Bus :** `xdg-desktop-portal`, `xdg-desktop-portal-gtk`, `xdg-desktop-portal-hyprland`, `dbus-user-session`, `gnome-keyring`, `libsecret-1-0`
-- **Audio, Vidéo & Capture :** `pipewire`, `wireplumber`, `playerctl`, `cava`, `ffmpeg`, `mpv`, `grim`, `slurp`, `wl-clipboard`, `tesseract-ocr`
-- **Outils Hyprland & Thèmes :** `hyprpicker`, `hyprsunset`, `hypridle`, `qt6ct`, `papirus-icon-theme`
-- **Utilitaires scripts Ryoku :** `python3`, `jq`, `socat`, `x11-xserver-utils` (`xhost`), `libglib2.0-bin` (`gsettings`)
+- **Compositor & Shell:** `hyprland`, `quickshell`, `qml6-module-qtquick3d`
+- **Portals & D-Bus Session:** `xdg-desktop-portal`, `xdg-desktop-portal-gtk`, `xdg-desktop-portal-hyprland`, `dbus-user-session`, `gnome-keyring`, `libsecret-1-0`
+- **Audio, Video & Capture:** `pipewire`, `wireplumber`, `playerctl`, `cava`, `ffmpeg`, `mpv`, `grim`, `slurp`, `wl-clipboard`, `tesseract-ocr`
+- **Hyprland Tools & Theming:** `hyprpicker`, `hyprsunset`, `hypridle`, `qt6ct`, `papirus-icon-theme`
+- **Ryoku Script Utilities:** `python3`, `jq`, `socat`, `x11-xserver-utils` (`xhost`), `libglib2.0-bin` (`gsettings`)
 
 ---
 
-## Après l'installation
+## Post-Installation
 
-1. Déconnecte-toi et choisis la session **Hyprland** sur ton écran de connexion (SDDM/GDM/LightDM).
-2. Raccourcis utiles :
-   - **`Super + ,`** : ouvrir les paramètres (**Ryoku Hub**)
-   - **`Super + H`** : ranger la fenêtre active dans la pile en coin (`winstash`)
-   - **`Super + Shift + H`** (ou clic sur la pile) : déployer les fenêtres rangées en arcs concentriques
-   - **Clic prolongé** sur la pile : déplacer la pile n'importe où sur l'écran
+1. Log out and select the **Hyprland** session on your display manager (SDDM/GDM/LightDM).
+2. Useful shortcuts:
+   - **`Super + ,`**: Open settings (**Ryoku Hub**)
+   - **`Super + H`**: Stash the active window into the corner stack (`winstash`)
+   - **`Super + Shift + H`** (or click the stack): Expand stashed windows in concentric arcs
+   - **Long press & drag** on the stack: Move the stack anywhere on screen

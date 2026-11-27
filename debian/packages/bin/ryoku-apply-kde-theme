@@ -2,16 +2,16 @@
 """
 ryoku-apply-kde-theme
 ─────────────────────
-Synchronise le thème Qt6 de Ryoku exclusivement via qt6ct
-(~/.config/qt6ct/qt6ct.conf et ~/.config/qt6ct/colors/ryoku.conf).
+Synchronizes Ryoku's Qt6 theme exclusively via qt6ct
+(~/.config/qt6ct/qt6ct.conf and ~/.config/qt6ct/colors/ryoku.conf).
 
-Aucune écriture dans ~/.config/kdeglobals, ~/.config/Kvantum/,
-~/.local/share/color-schemes/ ou ~/.local/share/plasma/, et aucune
-dépendance aux outils KDE (plasma-apply-colorscheme, lookandfeeltool,
-kreadconfig6, kvantummanager). Ryoku reste 100% autonome et n'interfère
-jamais avec KDE Plasma ou tout autre environnement tiers.
+Never writes to ~/.config/kdeglobals, ~/.config/Kvantum/,
+~/.local/share/color-schemes/, or ~/.local/share/plasma/, and has zero
+dependencies on KDE tools (plasma-apply-colorscheme, lookandfeeltool,
+kreadconfig6, kvantummanager). Ryoku remains 100% self-contained and never
+interferes with KDE Plasma or any other desktop environment.
 
-Usage : ryoku-apply-kde-theme [--no-apply]
+Usage: ryoku-apply-kde-theme [--no-apply]
 """
 
 import os
@@ -63,13 +63,13 @@ def sync_qt6ct_conf() -> None:
     with open(tmp, "w", encoding="utf-8") as f:
         cp.write(f, space_around_delimiters=False)
     os.replace(tmp, QT6CT_CONF)
-    print(f"[ryoku-qt6ct] ✓ qt6ct configuré : {QT6CT_CONF}")
+    print(f"[ryoku-qt6ct] ✓ qt6ct configured: {QT6CT_CONF}")
 
 
 if __name__ == "__main__":
     if APPLY and not is_ryoku_session():
         print(
-            "[ryoku-qt6ct] Hors session Ryoku — aucune modification appliquée.",
+            "[ryoku-qt6ct] Outside Ryoku session — skipping changes.",
             file=sys.stderr,
         )
         sys.exit(0)

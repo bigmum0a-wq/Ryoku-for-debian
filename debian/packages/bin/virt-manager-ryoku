@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# Wrapper Ryoku pour virt-manager sous Hyprland/Wayland.
+# Ryoku wrapper for virt-manager on Hyprland/Wayland.
 #
-# Problème : sous Hyprland, GDK_BACKEND="wayland,x11,*" force GTK à essayer
-# Wayland d'abord, puis X11. Sans XAUTHORITY défini, le fallback X11 échoue
-# avec "Authorization required". virt-manager 5.x supporte GTK4 natif Wayland,
-# donc on force le backend Wayland et on évite le fallback X11.
+# Issue: under Hyprland, GDK_BACKEND="wayland,x11,*" tells GTK to try Wayland
+# first, then X11. Without XAUTHORITY set, the X11 fallback fails with
+# "Authorization required". virt-manager 5.x supports native GTK4 Wayland,
+# so we force the Wayland backend and avoid the X11 fallback.
 #
-# Pour l'accès libvirt : l'utilisateur appartient au groupe "libvirt",
-# ce qui lui donne accès à qemu:///system sans mot de passe (polkit rule).
+# For libvirt access: the user belongs to the "libvirt" group,
+# which grants passwordless access to qemu:///system via polkit.
 
-# Forcer Wayland natif : pas de fallback X11, donc pas besoin de XAUTHORITY
+# Force native Wayland: no X11 fallback, so XAUTHORITY is unnecessary
 export GDK_BACKEND=wayland
 export QT_QPA_PLATFORM=wayland
 
-# Garantir WAYLAND_DISPLAY (hérité de la session, mais sécurisé)
+# Ensure WAYLAND_DISPLAY is set (inherited from session, with safe fallback)
 export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-1}"
 
-# XAUTHORITY : si XWayland est quand même utilisé (GTK3 fallback),
-# générer un cookie MIT-MAGIC-COOKIE-1 pour le display courant
+# XAUTHORITY: if XWayland is still used (GTK3 fallback),
+# generate a MIT-MAGIC-COOKIE-1 cookie for the current display
 if [ -n "$DISPLAY" ] && [ ! -s "${XAUTHORITY:-$HOME/.Xauthority}" ]; then
     export XAUTHORITY="$HOME/.Xauthority"
     xauth add "$DISPLAY" . "$(mcookie)" 2>/dev/null || true

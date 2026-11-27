@@ -89,8 +89,8 @@ ShellRoot {
                     Layout.fillWidth: true
                     Text {
                         text: root.mode === "replace"
-                              ? ("Remplacer « " + root.targetId + " »")
-                              : "Gérer les applications du dock"
+                              ? ("Replace \"" + root.targetId + "\"")
+                              : "Manage dock apps"
                         color: "#f1f5f9"
                         font.pixelSize: 14
                         font.bold: true
@@ -198,8 +198,8 @@ ShellRoot {
                                 Text {
                                     anchors.centerIn: parent
                                     text: root.mode === "replace"
-                                          ? "Choisir"
-                                          : (modelData.pinned ? "Épinglée" : "Ajouter")
+                                          ? "Select"
+                                          : (modelData.pinned ? "Pinned" : "Add")
                                     color: modelData.pinned || root.mode === "replace" ? "#7dd3fc" : "#cbd5e1"
                                     font.pixelSize: 10
                                     font.bold: true

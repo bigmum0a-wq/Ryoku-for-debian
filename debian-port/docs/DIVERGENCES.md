@@ -1,19 +1,19 @@
-# Portage Ryoku pour Debian / Parrot / Kali (`debian/port`)
+# Ryoku Port for Debian / Parrot / Kali (`debian/port`)
 
-Ce document recense les divergences entre le projet **Ryoku** original (conçu pour Arch Linux / CachyOS) et le portage **Ryoku-for-debian** (testé sur Parrot Security 7.4 / Debian 13 Trixie et Kali Linux).  
-Il est mis à jour au fil des correctifs avant la publication des prochaines releases `.deb`.
+This document tracks the divergences between the upstream **Ryoku** project (designed for Arch Linux / CachyOS) and the **Ryoku-for-debian** port (tested on Parrot Security 7.4 / Debian 13 Trixie and Kali Linux).  
+It is updated continuously as fixes land ahead of `.deb` releases.
 
 ---
 
-## 1. Divergences majeures avec le Ryoku original
+## 1. Major Divergences from Upstream Ryoku
 
-### 1.1 Gestionnaire de paquets et `ryoku-cli`
-- **Arch (`pacman` / AUR) → Debian (`apt` / `dpkg`)** :
-  - Adaptation de `ryoku` et `ryoku-host` pour interroger l'état des paquets via `dpkg`/`apt` au lieu de `pacman` (commits `7042a3d2e`, `dc73ad65e`, `44171ef98`).
-  - `ryoku doctor` ignore les vérifications propres à Arch/Btrfs/Limine (`pacman`, `mkinitcpio`, `snapper`).
+### 1.1 Package Manager and `ryoku-cli`
+- **Arch (`pacman` / AUR) -> Debian (`apt` / `dpkg`)**:
+  - Adapted `ryoku` and `ryoku-host` to query package status via `dpkg`/`apt` instead of `pacman` (commits `7042a3d2e`, `dc73ad65e`, `44171ef98`).
+  - `ryoku doctor` skips Arch/Btrfs/Limine-specific checks (`pacman`, `mkinitcpio`, `snapper`).
 
-### 1.2 Packaging Debian (`.deb` et dépôt APT)
-- Construction de **7 paquets `.deb`** (`v1.1.0-1`, commits `313b5cc61`, `bfb642437`, `107a630a6`) :
+### 1.2 Debian Packaging (`.deb` and APT Repository)
+- Builds **7 `.deb` packages** (`v1.1.0-1`, commits `313b5cc61`, `bfb642437`, `107a630a6`):
   - `ryoku-archive-keyring`
   - `ryoku-blobs`
   - `ryoku-cli`
@@ -21,69 +21,69 @@ Il est mis à jour au fil des correctifs avant la publication des prochaines rel
   - `ryoku-desktop-hyprland`
   - `ryoku-palette-bridge`
   - `ryoku-shell`
-- Génération d'un dépôt APT local via `debian/packages/repo/build-deb-repo.sh`.
+- Generates a local APT repository via `debian/packages/repo/build-deb-repo.sh`.
 
-### 1.3 Compatibilité Qt / Quickshell (`0.3.0`, Qt < 6.11)
-Sur Debian/Parrot, la version de Qt6 est antérieure à Qt 6.11 :
-- **Imports QML** : suppression du suffixe de version `6.11` (`import QtQuick 6.11` → `import QtQuick`) dans **112 fichiers QML** sous `quickshell/`.
-- **Stubs QML de repli** ajoutés dans `debian/packages/stubs/` :
+### 1.3 Qt / Quickshell Compatibility (`0.3.0`, Qt < 6.11)
+On Debian/Parrot, the packaged Qt6 version is older than Qt 6.11:
+- **QML imports**: stripped the `6.11` version suffix (`import QtQuick 6.11` -> `import QtQuick`) across **112 QML files** under `quickshell/`.
+- **Fallback QML stubs** added in `debian/packages/stubs/`:
   - `QtQuick/Effects/RectangularShadow.qml`
   - `Ryoku/Blobs/CavaSpectrumPainter.qml`
-- **Correctifs QML spécifiques** :
-  - `shell/modules/sidebar/ControlsBoard.qml` (suppression de la propriété `acceptedButtons` non supportée).
+- **Specific QML fixes**:
+  - `shell/modules/sidebar/ControlsBoard.qml` (removed unsupported `acceptedButtons` property).
   - `shell/modules/stage/StageBackdrop.qml`
   - `inir/modules/common/widgets/ContextMenu.qml`
   - `inir/modules/ii/overlay/OverlayWidgetDelegateChooser.qml`
 
-> **État transitoire (`.deb v1.1.0-1`) :** Les paquets `.deb` v1.1.0-1 actuels déploient encore la version non patchée dans `/usr/share/ryoku/config/quickshell/`. Tant que les nouveaux `.deb` ne sont pas recompilés, les fichiers QML corrigés doivent être placés dans `~/.config/ryoku/user_edits/quickshell/` pour ne pas être écrasés lors d'un `ryoku materialize`.
+> **Transitional state (`.deb v1.1.0-1`):** The initial `v1.1.0-1` `.deb` packages still shipped the unpatched files in `/usr/share/ryoku/config/quickshell/`. Until rebuilt `.deb` packages are installed, patched QML files can live in `~/.config/ryoku/user_edits/quickshell/` so `ryoku materialize` does not overwrite them.
 
 ---
 
-## 2. Éléments manquants dans les `.deb v1.1.0-1` et contournements actuels
+## 2. Historical Gaps in `.deb v1.1.0-1` and Workarounds
 
-| Élément | Symptôme sans correctif | Solution appliquée actuellement | À faire pour la v1.2 / Release |
+| Item | Symptom without fix | Current solution / workaround | Target for v1.2+ / Release |
 |---|---|---|---|
-| **`ryogami`** (`/usr/bin/ryogami`) | `ryogami.service` échoue 5 fois (`status=203/EXEC`), fond transparent, `reload-cover` bloque **45s** puis affiche `DESKTOP FAILED TO LOAD`. | Binaire copié dans `~/.local/bin/ryogami` (ou `/usr/bin/ryogami`) + fork de `systemd/user/ryogami.service` dans `user_edits`. | Inclure `/usr/bin/ryogami` dans `ryoku-shell` ou `ryoku-desktop`. |
-| **`ryoku-hub`** (`/usr/bin/ryoku-hub`) | Erreur `Unable to locate executable '/usr/bin/ryoku-hub'` sur `ExecStartPost` de `ryoku-shell.service`. | Binaire présent dans `~/.local/bin/ryoku-hub` + fork de `systemd/user/ryoku-shell.service` dans `user_edits`. | Inclure `/usr/bin/ryoku-hub` dans les `.deb`. |
-| **Police `Material Symbols Rounded`** | Toutes les icônes du shell s'affichent sous forme de texte brut (ligatures : `wifi`, `bluetooth`, `work`, etc.). | Installation de `MaterialSymbolsRounded.ttf` dans `~/.local/share/fonts/MaterialSymbols/` + `fc-cache`. | Embarquer la police dans un paquet `.deb` ou post-install. |
-| **Curseur `Bibata-Modern-Ice`** | Curseur bitmap par défaut dans Hyprland. | Archive extraite dans `~/.local/share/icons/Bibata-Modern-Ice/`. | Embarquer ou déclarer en dépendance. |
-| **`ryoku-bluetooth-reset.service`** | Échec `Interactive authentication required` sur `systemctl restart bluetooth.service` au login. | Service masqué côté utilisateur (`systemctl --user mask ryoku-bluetooth-reset.service`). | Adapter le script ou une règle polkit. |
-| **Fond par défaut Hyprland** | Splash/logo Hyprland visible si le fond est transparent. | `misc = { force_default_wallpaper = -1 }` ajouté dans `~/.config/hypr/user.lua`. | Intégrer par défaut dans `hypr/modules/misc.lua`. |
+| **`ryogami`** (`/usr/bin/ryogami`) | `ryogami.service` fails 5 times (`status=203/EXEC`), transparent background, `reload-cover` blocks **45s** then shows `DESKTOP FAILED TO LOAD`. | Binary copied to `~/.local/bin/ryogami` (or `/usr/bin/ryogami`) + overridden `systemd/user/ryogami.service` in `user_edits`. | Bundle `/usr/bin/ryogami` in `ryoku-shell` or `ryoku-desktop`. |
+| **`ryoku-hub`** (`/usr/bin/ryoku-hub`) | Error `Unable to locate executable '/usr/bin/ryoku-hub'` on `ExecStartPost` of `ryoku-shell.service`. | Binary placed in `~/.local/bin/ryoku-hub` + overridden `systemd/user/ryoku-shell.service` in `user_edits`. | Bundle `/usr/bin/ryoku-hub` in `.deb` packages. |
+| **`Material Symbols Rounded` font** | Shell icons render as raw text ligatures (`wifi`, `bluetooth`, `work`, etc.). | Installed `MaterialSymbolsRounded.ttf` into `~/.local/share/fonts/MaterialSymbols/` + `fc-cache`. | Bundle font in a `.deb` package or post-install. |
+| **`Bibata-Modern-Ice` cursor** | Default bitmap cursor in Hyprland. | Extracted archive into `~/.local/share/icons/Bibata-Modern-Ice/`. | Bundle or declare as a dependency. |
+| **`ryoku-bluetooth-reset.service`** | Fails with `Interactive authentication required` on `systemctl restart bluetooth.service` at login. | Service masked at user level (`systemctl --user mask ryoku-bluetooth-reset.service`). | Adapt script or add polkit rule. |
+| **Default Hyprland wallpaper** | Hyprland splash/logo visible when background is transparent. | `misc = { force_default_wallpaper = -1 }` added to `~/.config/hypr/user.lua`. | Enable by default in `hypr/modules/misc.lua`. |
 
 ---
 
-## 3. Dépendances logicielles externes
+## 3. External Software Dependencies
 
-### 3.1 Paquets disponibles via `apt` (Debian / Parrot / Kali)
-Ces outils sont requis pour les captures d'écran, presse-papiers, OCR, contrôle média, visualiseur audio, pipette, filtre lumière bleue et mise en veille :
+### 3.1 Packages available via `apt` (Debian / Parrot / Kali)
+These tools are required for screenshots, clipboard, OCR, media controls, audio visualizer, color picker, blue-light filter, and idle management:
 ```bash
 sudo apt install -y \
   grim slurp wl-clipboard tesseract-ocr \
   playerctl cava hyprpicker hyprsunset hypridle
 ```
 
-### 3.2 Outils installés hors `apt`
-- **`matugen` (`v4.2.0`)** : installé dans `~/.local/bin/matugen` (binaire x86_64 depuis les releases GitHub `InioX/matugen`) pour l'extraction dynamique des couleurs du fond d'écran.
-- **Optionnels non installés** : `tailscale`, `prowl`, `voxtype`.
+### 3.2 Tools installed outside `apt`
+- **`matugen` (`v4.2.0`)**: installed in `~/.local/bin/matugen` (x86_64 binary from `InioX/matugen` GitHub Releases) for dynamic wallpaper color extraction.
+- **Optional (not installed by default)**: `tailscale`, `prowl`, `voxtype`.
 
 ---
 
-## 4. Chemins suivis sur le système
+## 4. System Paths
 
-- **Code source du portage** : `~/ryoku-debian-port` (sur cette machine : `/home/junior/.gemini/antigravity/scratch/ryoku-debian-port`, branche `debian/port`)
-- **Configuration système shippée par les `.deb`** : `/usr/share/ryoku/config/`
-- **Configuration matérialisée utilisateur** : `~/.config/` (générée par `ryoku materialize`)
-- **Surcharges utilisateur protégées** : `~/.config/ryoku/user_edits/`
-- **Configuration Hyprland utilisateur** : `~/.config/hypr/user.lua`
-- **Preset d'animation actif** : `~/.config/ryoku/anim-preset` (presets disponibles dans `~/.config/hypr/modules/animations/`)
-- **Fonds d'écran** : `~/Pictures/Wallpapers/` (images) et `~/Pictures/livewalls/` (vidéos `.mp4`/`.webm`)
-- **Enregistrements vidéo** : `~/Videos/Recordings/`
+- **Port source repository**: `~/ryoku-debian-port` (branch `debian/port`)
+- **System configuration shipped by `.deb`**: `/usr/share/ryoku/config/`
+- **Materialized user configuration**: `~/.config/` (generated by `ryoku materialize`)
+- **Protected user overrides**: `~/.config/ryoku/user_edits/`
+- **User Hyprland configuration**: `~/.config/hypr/user.lua`
+- **Active animation preset**: `~/.config/ryoku/anim-preset` (presets available in `~/.config/hypr/modules/animations/`)
+- **Wallpapers**: `~/Pictures/Wallpapers/` (images) and `~/Pictures/livewalls/` (`.mp4`/`.webm` videos)
+- **Screen recordings**: `~/Videos/Recordings/`
 
 ---
 
-## 5. Feuille de route (prochaines étapes)
+## 5. Roadmap (Next Steps)
 
-- [ ] Recompiler les `.deb` en incluant `ryogami`, `ryoku-hub` et les correctifs QML (`QtQuick` sans `6.11`, `ControlsBoard.qml`, etc.) directement dans `/usr/share/ryoku/config/`.
-- [ ] Ajouter les dépendances `apt` (`grim`, `slurp`, `wl-clipboard`, `tesseract-ocr`, `playerctl`, `cava`, `hyprpicker`, `hyprsunset`, `hypridle`) dans `debian/control`.
-- [ ] Embarquer `MaterialSymbolsRounded.ttf`, `Bibata-Modern-Ice` et `matugen` dans le packaging ou le script d'installation unifié.
-- [ ] Publier les paquets `.deb` et l'archive APT sur les **GitHub Releases** de `bigmum0a-wq/Ryoku-for-debian`.
+- [ ] Rebuild `.deb` packages including `ryogami`, `ryoku-hub`, and QML compatibility fixes (`QtQuick` without `6.11`, `ControlsBoard.qml`, etc.) directly in `/usr/share/ryoku/config/`.
+- [ ] Declare `apt` dependencies (`grim`, `slurp`, `wl-clipboard`, `tesseract-ocr`, `playerctl`, `cava`, `hyprpicker`, `hyprsunset`, `hypridle`) in `debian/control`.
+- [ ] Bundle `MaterialSymbolsRounded.ttf`, `Bibata-Modern-Ice`, and `matugen` in the packaging or unified install script.
+- [ ] Publish `.deb` packages and APT repository on **GitHub Releases** of `bigmum0a-wq/Ryoku-for-debian`.

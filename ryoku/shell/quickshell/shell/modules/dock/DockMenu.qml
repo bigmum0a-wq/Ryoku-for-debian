@@ -27,9 +27,9 @@ Item {
         const r = [];
         r.push({ key: "open", icon: "launch", label: menu.count > 0 ? I18n.tr("New window") : I18n.tr("Open") });
         r.push({ key: "pin", icon: menu.pinned ? "keep_off" : "keep", label: menu.pinned ? I18n.tr("Unpin") : I18n.tr("Pin") });
-        r.push({ key: "replace", icon: "swap_horiz", label: I18n.tr("Changer d'application...") });
-        r.push({ key: "manage", icon: "apps", label: I18n.tr("Gérer le dock...") });
-        r.push({ key: "stash", icon: "layers", label: I18n.tr("Fenêtres rangées") });
+        r.push({ key: "replace", icon: "swap_horiz", label: I18n.tr("Replace app...") });
+        r.push({ key: "manage", icon: "apps", label: I18n.tr("Manage dock...") });
+        r.push({ key: "stash", icon: "layers", label: I18n.tr("Stashed windows") });
         if (menu.count > 0)
             r.push({ key: "close", icon: "close", label: I18n.tr("Close") });
         return r;
