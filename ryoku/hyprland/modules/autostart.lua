@@ -12,15 +12,10 @@ hl.on("hyprland.start", function()
     -- strips WAYLAND_DISPLAY, falls back to DISPLAY, and crashes with
     -- "Authorization required, but no authorization protocol specified".
     hl.exec_cmd("command -v xhost >/dev/null 2>&1 && xhost +si:localuser:root >/dev/null 2>&1 || true")
-    hl.exec_cmd("systemctl --user import-environment RYOKU_SESSION_KEY RYOKU_ACTIVE HYPRLAND_INSTANCE_SIGNATURE DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE NO_AT_BRIDGE QT_QPA_PLATFORMTHEME QT_WAYLAND_DISABLE_WINDOWDECORATION GSK_RENDERER GDK_BACKEND QT_QPA_PLATFORM QT_AUTO_SCREEN_SCALE_FACTOR ELECTRON_OZONE_PLATFORM_HINT RYOKU_POLKIT_AGENT XCURSOR_THEME XCURSOR_SIZE 2>/dev/null || true")
-    hl.exec_cmd("dbus-update-activation-environment --systemd RYOKU_SESSION_KEY RYOKU_ACTIVE HYPRLAND_INSTANCE_SIGNATURE DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE NO_AT_BRIDGE QT_QPA_PLATFORMTHEME QT_WAYLAND_DISABLE_WINDOWDECORATION GSK_RENDERER GDK_BACKEND QT_QPA_PLATFORM QT_AUTO_SCREEN_SCALE_FACTOR ELECTRON_OZONE_PLATFORM_HINT RYOKU_POLKIT_AGENT XCURSOR_THEME XCURSOR_SIZE >/dev/null 2>&1 || true")
+    hl.exec_cmd("systemctl --user import-environment RYOKU_SESSION_KEY RYOKU_ACTIVE HYPRLAND_INSTANCE_SIGNATURE DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE NO_AT_BRIDGE QT_QPA_PLATFORMTHEME QT_WAYLAND_DISABLE_WINDOWDECORATION GSK_RENDERER GDK_BACKEND GTK_THEME QT_QPA_PLATFORM QT_AUTO_SCREEN_SCALE_FACTOR ELECTRON_OZONE_PLATFORM_HINT RYOKU_POLKIT_AGENT XCURSOR_THEME XCURSOR_SIZE 2>/dev/null || true")
+    hl.exec_cmd("dbus-update-activation-environment --systemd RYOKU_SESSION_KEY RYOKU_ACTIVE HYPRLAND_INSTANCE_SIGNATURE DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE NO_AT_BRIDGE QT_QPA_PLATFORMTHEME QT_WAYLAND_DISABLE_WINDOWDECORATION GSK_RENDERER GDK_BACKEND GTK_THEME QT_QPA_PLATFORM QT_AUTO_SCREEN_SCALE_FACTOR ELECTRON_OZONE_PLATFORM_HINT RYOKU_POLKIT_AGENT XCURSOR_THEME XCURSOR_SIZE >/dev/null 2>&1 || true")
     hl.exec_cmd("ryoku-wm-hyprland act cursor.set Bibata-Modern-Ice 24")
-    hl.exec_cmd("gsettings set org.gnome.desktop.interface color-scheme prefer-dark")
-    -- adw-gtk3-dark, not Adwaita-dark: stock Adwaita GTK3 hardcodes its colours,
-    -- so the palette Ryoku generates barely reaches GTK3 apps, while adw-gtk3
-    -- derives its rules from the named colours we already emit. The daemon owns
-    -- accent-color; do not set it here.
-    hl.exec_cmd("gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3-dark")
+    -- GTK theme is scoped to the Ryoku session via GTK_THEME in env.lua (never mutating global dconf).
     -- Folder icons follow the wallpaper accent: ryoku-cmd-folders builds a small
     -- Papirus-Dark overlay under ~/.local/share/icons tinted to the palette and
     -- selects it. Rebuilt on every palette change by the shell's matugen hook.
@@ -81,8 +76,7 @@ hl.on("hyprland.start", function()
     -- materially (beta 18 = 18).
     hl.exec_cmd("command -v ryoku-session-intro >/dev/null 2>&1 && ryoku-session-intro welcome")
     hl.exec_cmd("command -v ryoku-session-intro >/dev/null 2>&1 && ryoku-session-intro keys-hint")
-    -- Hide redundant GTK CSD close/max/min buttons (replaced by working Hyprland corner controls)
-    hl.exec_cmd("command -v gsettings >/dev/null 2>&1 && gsettings set org.gnome.desktop.wm.preferences button-layout ':' >/dev/null 2>&1 &")
+    -- GTK apps keep their own native CSD buttons (wincontrols defaults to borderless apps only).
     -- macOS-style window stash overlay & eco livewall CPU guard (scoped inside ryoku-session.slice)
     hl.exec_cmd("(systemd-run --user --scope --slice=ryoku-session.slice --unit=ryoku-winstash-ui flock -n /tmp/ryoku-winstash-ui.lock quickshell -p \"$HOME/.config/quickshell/winstash/shell.qml\" || flock -n /tmp/ryoku-winstash-ui.lock quickshell -p \"$HOME/.config/quickshell/winstash/shell.qml\") >/dev/null 2>&1 &")
     hl.exec_cmd("(systemd-run --user --scope --slice=ryoku-session.slice --unit=ryoku-livewall-eco flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco || flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco) >/dev/null 2>&1 &")

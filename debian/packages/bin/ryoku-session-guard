@@ -62,27 +62,8 @@ enter_ryoku() {
     xdg-desktop-portal-kde xdg-desktop-portal-gnome \
     2>/dev/null || true
 
-  # 2. Back up original KDE/GTK files once before Ryoku styles touch them
-  backup_file_once "$CFG_DIR/kdeglobals" "kdeglobals"
-  backup_file_once "$CFG_DIR/Kvantum/kvantum.kvconfig" "kvantum.kvconfig"
-  backup_file_once "$CFG_DIR/gtk-3.0/settings.ini" "gtk3-settings.ini"
-  backup_file_once "$CFG_DIR/gtk-4.0/settings.ini" "gtk4-settings.ini"
-  backup_file_once "$CFG_DIR/gtk-3.0/gtk.css" "gtk3.css"
-  backup_file_once "$CFG_DIR/gtk-4.0/gtk.css" "gtk4.css"
-
-  # 3. Apply Ryoku GTK button-layout (hide redundant GTK CSD buttons in Hyprland)
-  if command -v gsettings >/dev/null 2>&1; then
-    gsettings set org.gnome.desktop.wm.preferences button-layout ':' 2>/dev/null || true
-  fi
-  for f in "$CFG_DIR/gtk-3.0/settings.ini" "$CFG_DIR/gtk-4.0/settings.ini"; do
-    if [ -f "$f" ]; then
-      if grep -q '^gtk-decoration-layout=' "$f" 2>/dev/null; then
-        sed -i 's/^gtk-decoration-layout=.*/gtk-decoration-layout=:/' "$f" 2>/dev/null || true
-      else
-        printf '\ngtk-decoration-layout=:\n' >> "$f" 2>/dev/null || true
-      fi
-    fi
-  done
+  # 2. Do not mutate shared ~/.config/kdeglobals, ~/.config/gtk-3.0, or global dconf.
+  # Ryoku scopes its Qt/GTK styling strictly via session environment variables and qt6ct.
 }
 
 enter_other() {
@@ -110,7 +91,7 @@ enter_other() {
     systemctl --user unset-environment \
       RYOKU_SESSION_KEY RYOKU_ACTIVE \
       QT_QPA_PLATFORMTHEME QT_WAYLAND_DISABLE_WINDOWDECORATION \
-      GSK_RENDERER GDK_BACKEND QT_QPA_PLATFORM \
+      GSK_RENDERER GDK_BACKEND GTK_THEME QT_QPA_PLATFORM \
       QT_AUTO_SCREEN_SCALE_FACTOR ELECTRON_OZONE_PLATFORM_HINT \
       RYOKU_POLKIT_AGENT XCURSOR_THEME XCURSOR_SIZE \
       2>/dev/null || true
@@ -123,10 +104,7 @@ enter_other() {
     2>/dev/null || true
   pkill -u "${USER:-$(id -un)}" -f "quickshell.*winstash" 2>/dev/null || true
 
-  # 2. Restore normal GTK window buttons so third-party DEs (KDE/GNOME/XFCE) are unaffected
-  if command -v gsettings >/dev/null 2>&1; then
-    gsettings set org.gnome.desktop.wm.preferences button-layout 'close,maximize,minimize:' 2>/dev/null || true
-  fi
+  # 2. Clean up any legacy gtk-decoration-layout=: left by older Ryoku versions without overwriting gsettings
   for f in "$CFG_DIR/gtk-3.0/settings.ini" "$CFG_DIR/gtk-4.0/settings.ini"; do
     if [ -f "$f" ]; then
       sed -i '/^gtk-decoration-layout=:/d' "$f" 2>/dev/null || true

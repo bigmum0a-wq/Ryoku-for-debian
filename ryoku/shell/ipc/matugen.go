@@ -1340,20 +1340,34 @@ var (
 // restarts. The writes below are still worth making: every app launched after
 // this point is correct, and they are what an X11 or xsettings-backed session
 // needs to follow along.
-func matugenReload(mode string, emitter kdePaletteSignalEmitter) {
-	scheme := "prefer-dark"
-	if mode == "light" {
-		scheme = "prefer-light"
+func syncGsettingsEnabled() bool {
+	if os.Getenv("RYOKU_SYNC_GSETTINGS") == "1" {
+		return true
 	}
-	_ = runCommand("gsettings", "set", "org.gnome.desktop.interface", "color-scheme", scheme)
+	return os.Getenv("RYOKU_SESSION_KEY") == ""
+}
 
-	applyGnomeAccent()
-	applyKdeColors(emitter)
+func writeKdeglobalsEnabled() bool {
+	if os.Getenv("RYOKU_WRITE_KDEGLOBALS") == "1" {
+		return true
+	}
+	return os.Getenv("RYOKU_SESSION_KEY") == ""
+}
 
-	// gtkTheme "system" (name == "") means the user owns gtk-theme, so Ryoku
-	// leaves it entirely alone. Otherwise land the variant for this mode.
-	if name := resolveGtkTheme(mode); name != "" {
-		matugenNudgeGtk(name)
+func matugenReload(mode string, emitter kdePaletteSignalEmitter) {
+	if syncGsettingsEnabled() {
+		scheme := "prefer-dark"
+		if mode == "light" {
+			scheme = "prefer-light"
+		}
+		_ = runCommand("gsettings", "set", "org.gnome.desktop.interface", "color-scheme", scheme)
+		applyGnomeAccent()
+		if name := resolveGtkTheme(mode); name != "" {
+			matugenNudgeGtk(name)
+		}
+	}
+	if writeKdeglobalsEnabled() {
+		applyKdeColors(emitter)
 	}
 	_ = runCommand("pkill", "-USR1", "-x", "kitty")
 	nudgePalette()
@@ -1713,10 +1727,12 @@ func fontSig(frame []byte) string {
 // a kitty include reloaded via SIGUSR1. Empty keys resolve to the shipped faces.
 func applyFont(frame []byte) {
 	family, mono, size := fontChoice(frame)
-	sz := strconv.Itoa(size)
-	_ = runCommand("gsettings", "set", "org.gnome.desktop.interface", "font-name", family+" "+sz)
-	_ = runCommand("gsettings", "set", "org.gnome.desktop.interface", "document-font-name", family+" "+sz)
-	_ = runCommand("gsettings", "set", "org.gnome.desktop.interface", "monospace-font-name", mono+" "+sz)
+	if syncGsettingsEnabled() {
+		sz := strconv.Itoa(size)
+		_ = runCommand("gsettings", "set", "org.gnome.desktop.interface", "font-name", family+" "+sz)
+		_ = runCommand("gsettings", "set", "org.gnome.desktop.interface", "document-font-name", family+" "+sz)
+		_ = runCommand("gsettings", "set", "org.gnome.desktop.interface", "monospace-font-name", mono+" "+sz)
+	}
 	writeQt6ctFont(family, size)
 	writeKittyFont(mono, size)
 	_ = runCommand("pkill", "-USR1", "-x", "kitty")

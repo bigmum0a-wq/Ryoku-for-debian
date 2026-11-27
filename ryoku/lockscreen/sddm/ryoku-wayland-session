@@ -183,6 +183,7 @@ if is_ryoku_session_cmd "$@"; then
   export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
   export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
   export GDK_BACKEND="${GDK_BACKEND:-wayland,x11,*}"
+  export GTK_THEME="${GTK_THEME:-adw-gtk3-dark}"
   export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland;xcb}"
   export QT_AUTO_SCREEN_SCALE_FACTOR="${QT_AUTO_SCREEN_SCALE_FACTOR:-1}"
   export QT_WAYLAND_DISABLE_WINDOWDECORATION="${QT_WAYLAND_DISABLE_WINDOWDECORATION:-1}"
@@ -192,7 +193,7 @@ if is_ryoku_session_cmd "$@"; then
   if command -v systemctl >/dev/null 2>&1; then
     systemctl --user import-environment \
       RYOKU_SESSION_KEY RYOKU_ACTIVE XCURSOR_THEME XCURSOR_SIZE \
-      QT_QPA_PLATFORMTHEME GDK_BACKEND QT_QPA_PLATFORM \
+      QT_QPA_PLATFORMTHEME GDK_BACKEND GTK_THEME QT_QPA_PLATFORM \
       QT_AUTO_SCREEN_SCALE_FACTOR QT_WAYLAND_DISABLE_WINDOWDECORATION \
       ELECTRON_OZONE_PLATFORM_HINT GSK_RENDERER RYOKU_POLKIT_AGENT \
       2>/dev/null || true
@@ -210,7 +211,7 @@ cleanup_ryoku_session() {
     systemctl --user stop ryoku-session.target ryoku-session.slice 2>/dev/null || true
     systemctl --user unset-environment \
       RYOKU_SESSION_KEY RYOKU_ACTIVE XCURSOR_THEME XCURSOR_SIZE \
-      QT_QPA_PLATFORMTHEME GDK_BACKEND QT_QPA_PLATFORM \
+      QT_QPA_PLATFORMTHEME GDK_BACKEND GTK_THEME QT_QPA_PLATFORM \
       QT_AUTO_SCREEN_SCALE_FACTOR QT_WAYLAND_DISABLE_WINDOWDECORATION \
       ELECTRON_OZONE_PLATFORM_HINT GSK_RENDERER RYOKU_POLKIT_AGENT \
       2>/dev/null || true
