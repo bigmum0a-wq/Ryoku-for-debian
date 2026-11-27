@@ -77,6 +77,8 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("command -v ryoku-session-intro >/dev/null 2>&1 && ryoku-session-intro welcome")
     hl.exec_cmd("command -v ryoku-session-intro >/dev/null 2>&1 && ryoku-session-intro keys-hint")
     -- GTK apps keep their own native CSD buttons (wincontrols defaults to borderless apps only).
+    -- Native compositor titlebars (hyprbars): attach − (stash), □ (maximize), ✕ (close) into every window frame
+    hl.exec_cmd("command -v ryoku-hyprbars-init >/dev/null 2>&1 && ryoku-hyprbars-init >/dev/null 2>&1 &")
     -- macOS-style window stash overlay & eco livewall CPU guard (scoped inside ryoku-session.slice)
     hl.exec_cmd("(systemd-run --user --scope --slice=ryoku-session.slice --unit=ryoku-winstash-ui flock -n /tmp/ryoku-winstash-ui.lock quickshell -p \"$HOME/.config/quickshell/winstash/shell.qml\" || flock -n /tmp/ryoku-winstash-ui.lock quickshell -p \"$HOME/.config/quickshell/winstash/shell.qml\") >/dev/null 2>&1 &")
     hl.exec_cmd("(systemd-run --user --scope --slice=ryoku-session.slice --unit=ryoku-livewall-eco flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco || flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco) >/dev/null 2>&1 &")

@@ -8,10 +8,8 @@ ShellRoot {
     id: root
 
     property var stashed: []
-    property var activeWindows: []
     property bool expanded: false
     property string lastRaw: ""
-    property string lastWinRaw: ""
 
     // Draggable stack position (margins from right & bottom edges)
     property real stackRight: 16
@@ -41,16 +39,12 @@ ShellRoot {
         id: listProc
         command: [
             "bash", "-c",
-            root.winstashCmd + "; printf '%s\\n' \"$([ -f '" + root.stateFile + "' ] && echo 1 || echo 0)\"; \"$BIN\" list; echo '---WINLIST---'; \"$BIN\" win-list"
+            root.winstashCmd + "; printf '%s\\n' \"$([ -f '" + root.stateFile + "' ] && echo 1 || echo 0)\"; \"$BIN\" list"
         ]
         stdout: StdioCollector {
             onStreamFinished: {
                 var raw = (this.text || "").trim();
-                var sep = raw.indexOf("\n---WINLIST---\n");
-                var stashPart = sep >= 0 ? raw.slice(0, sep) : raw;
-                var winPart = sep >= 0 ? raw.slice(sep + 15).trim() : "[]";
-
-                var lines = stashPart.split("\n");
+                var lines = raw.split("\n");
                 if (lines.length >= 2) {
                     root.expanded = (lines[0].trim() === "1");
                     var jsonStr = lines.slice(1).join("\n");
@@ -61,13 +55,6 @@ ShellRoot {
                             if (Array.isArray(parsed)) root.stashed = parsed;
                         } catch (e) {}
                     }
-                }
-                if (winPart !== root.lastWinRaw) {
-                    root.lastWinRaw = winPart;
-                    try {
-                        var parsedWins = JSON.parse(winPart);
-                        if (Array.isArray(parsedWins)) root.activeWindows = parsedWins;
-                    } catch (e) {}
                 }
             }
         }
@@ -82,148 +69,8 @@ ShellRoot {
         actionProc.running = true;
     }
 
-    // ─── Per-window corner touch/mouse controls (− □ ✕) ──────────────────────
-    // Click-through everywhere except on the tiny 74x22 pill at each window's top-right corner.
-    // Right-click any pill (or run `ryoku-winstash controls-toggle`) to hide/show.
-    PanelWindow {
-        id: winControlsWin
-        visible: root.activeWindows.length > 0 && !root.expanded
-        anchors { top: true; bottom: true; left: true; right: true }
-        color: "transparent"
-        exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: WlrLayer.Top
-        WlrLayershell.namespace: "ryoku-wincontrols"
-
-        // Input mask: only the pill rectangles receive events, the rest is click-through.
-        // We use item-based regions — rebuilt lazily via Qt.callLater to avoid tight loops.
-        property Component _regionComp: Component {
-            Region { }
-        }
-        property var _maskRegs: []
-
-        function rebuildMask() {
-            // Destroy previous region objects
-            for (var j = 0; j < _maskRegs.length; j++) {
-                if (_maskRegs[j] && !_maskRegs[j].destroyed) _maskRegs[j].destroy();
-            }
-            var regs = [];
-            for (var i = 0; i < pillRepeater.count; i++) {
-                var it = pillRepeater.itemAt(i);
-                if (it && it.visible) {
-                    var r = _regionComp.createObject(winControlsWin, { item: it });
-                    if (r) regs.push(r);
-                }
-            }
-            _maskRegs = regs;
-            controlsMask.regions = regs;
-        }
-
-        mask: Region {
-            id: controlsMask
-            regions: []
-        }
-
-        Repeater {
-            id: pillRepeater
-            model: root.activeWindows
-            onCountChanged: Qt.callLater(winControlsWin.rebuildMask)
-
-            delegate: Rectangle {
-                id: pill
-                required property var modelData
-
-                // Position pill at top-right of its window (screen-absolute coordinates from win-list)
-                x: Math.max(4, Math.min(winControlsWin.width  - width  - 4,
-                                        modelData.x + modelData.w - width - 8))
-                y: Math.max(4, Math.min(winControlsWin.height - height - 4,
-                                        modelData.y + 6))
-                width: 76; height: 22; radius: 11
-                color: "#d90d1729"
-                border.width: 1; border.color: "#4438bdf8"
-
-                // Rebuild mask whenever a pill moves (window moved/resized)
-                onXChanged: Qt.callLater(winControlsWin.rebuildMask)
-                onYChanged: Qt.callLater(winControlsWin.rebuildMask)
-                Component.onCompleted: Qt.callLater(winControlsWin.rebuildMask)
-                Component.onDestruction: Qt.callLater(winControlsWin.rebuildMask)
-
-                Row {
-                    anchors.centerIn: parent
-                    spacing: 3
-
-                    // ── Stash / hide (−) ──────────────────────────────────────
-                    Rectangle {
-                        width: 22; height: 18; radius: 9
-                        color: minMa.containsMouse ? "#44facc15" : "transparent"
-                        Text {
-                            anchors.centerIn: parent; text: "−"
-                            color: "#fde047"; font.pixelSize: 13; font.bold: true
-                        }
-                        MouseArea {
-                            id: minMa; anchors.fill: parent; hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton)
-                                    root.runAction(["controls-toggle"]);
-                                else
-                                    root.runAction(["hide-addr", modelData.address]);
-                            }
-                        }
-                    }
-
-                    // ── Resize cycle: □ normal→max | ❐ max→medium | ▫ medium→compact ──
-                    Rectangle {
-                        width: 22; height: 18; radius: 9
-                        color: maxMa.containsMouse ? "#444ade80" : "transparent"
-                        Text {
-                            anchors.centerIn: parent
-                            text: {
-                                if (modelData.sizeState === "max")     return "❐";
-                                if (modelData.sizeState === "medium")  return "▫";
-                                if (modelData.sizeState === "compact") return "□";
-                                return "□";
-                            }
-                            color: modelData.sizeState === "max" ? "#7dd3fc" : "#86efac"
-                            font.pixelSize: 10; font.bold: true
-                        }
-                        MouseArea {
-                            id: maxMa; anchors.fill: parent; hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton)
-                                    root.runAction(["controls-toggle"]);
-                                else
-                                    root.runAction(["maximize", modelData.address]);
-                            }
-                        }
-                    }
-
-                    // ── Close (✕) ─────────────────────────────────────────────
-                    Rectangle {
-                        width: 22; height: 18; radius: 9
-                        color: closeWinMa.containsMouse ? "#55fb7185" : "transparent"
-                        Text {
-                            anchors.centerIn: parent; text: "✕"
-                            color: "#fda4af"; font.pixelSize: 10; font.bold: true
-                        }
-                        MouseArea {
-                            id: closeWinMa; anchors.fill: parent; hoverEnabled: true
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton)
-                                    root.runAction(["controls-toggle"]);
-                                else
-                                    root.runAction(["close", modelData.address]);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // Native window titlebar controls (− □ ✕) are handled directly in-compositor by hyprbars
+    // (loaded via ryoku-hyprbars-init) so they never float outside resized windows.
 
     // ─── Collapsed: stacked miniature cards (long-press + drag to move anywhere) ───
     PanelWindow {
