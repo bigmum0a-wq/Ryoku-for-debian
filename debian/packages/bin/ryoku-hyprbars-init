@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # ryoku-hyprbars-init — Load and configure native Hyprland window titlebars (hyprbars)
-# with Ryoku's 3 native window buttons (− stash, □ maximize, ✕ close).
+# Default style: Apple / macOS traffic lights (left-aligned) integrated into the window frame.
+#   Red    (✕) : Close active window
+#   Yellow (−) : Stash window to bottom-right dock (ryoku-winstash hide)
+#   Green  (+) : 3-state resize cycle (max -> medium -> compact -> tiled via ryoku-winstash maximize)
 set -u
 
 BAR_SO=""
@@ -16,7 +19,10 @@ done
 [ -n "$BAR_SO" ] || exit 0
 command -v hyprctl >/dev/null 2>&1 || exit 0
 
-if ! hyprctl plugins list 2>/dev/null | grep -q "Plugin hyprbars"; then
+ALREADY_LOADED=0
+if hyprctl plugins list 2>/dev/null | grep -q "Plugin hyprbars"; then
+  ALREADY_LOADED=1
+else
   hyprctl plugin load "$BAR_SO" >/dev/null 2>&1 || exit 0
 fi
 
@@ -24,38 +30,51 @@ hyprctl eval '
 hl.config({
     plugin = {
         hyprbars = {
-            bar_height = 24,
-            bar_color = "rgba(0d1729ee)",
-            ["col.text"] = "rgba(e2e8f0ff)",
+            enabled = true,
+            bar_height = 28,
+            bar_color = "rgba(181825e6)",
+            bar_blur = true,
+            ["col.text"] = "rgba(cdd6f4d9)",
             bar_text_size = 11,
-            bar_text_align = "left",
-            bar_padding = 10,
-            bar_button_padding = 6,
+            bar_text_weight = "medium",
+            bar_text_font = "Sans",
+            bar_text_align = "center",
+            bar_buttons_alignment = "left",
+            bar_padding = 12,
+            bar_button_padding = 8,
             bar_part_of_window = true,
-            bar_precedence_over_border = true,
-            on_double_click = "hyprctl dispatch fullscreen 1",
+            bar_precedence_over_border = false,
+            icon_on_hover = true,
+            inactive_button_color = "rgba(585b70cc)",
+            on_double_click = "ryoku-winstash maximize",
         },
     },
 })
-hl.plugin.hyprbars.add_button({
-    bg_color = "rgba(fb7185cc)",
-    fg_color = "rgba(0d1729ff)",
-    size = 16,
-    icon = "✕",
-    action = "hyprctl dispatch killactive",
-})
-hl.plugin.hyprbars.add_button({
-    bg_color = "rgba(4ade80cc)",
-    fg_color = "rgba(0d1729ff)",
-    size = 16,
-    icon = "□",
-    action = "hyprctl dispatch fullscreen 1",
-})
-hl.plugin.hyprbars.add_button({
-    bg_color = "rgba(facc15cc)",
-    fg_color = "rgba(0d1729ff)",
-    size = 16,
-    icon = "−",
-    action = "ryoku-winstash hide",
-})
 ' >/dev/null 2>&1 || true
+
+# Register the 3 Apple traffic-light buttons once per plugin load
+if [ "$ALREADY_LOADED" = "0" ] || [ "${1:-}" = "--reset-buttons" ]; then
+  hyprctl eval '
+  hl.plugin.hyprbars.add_button({
+      bg_color = "rgba(ff5f57ff)",
+      fg_color = "rgba(4c0002ff)",
+      size = 13,
+      icon = "×",
+      action = "hyprctl dispatch killactive",
+  })
+  hl.plugin.hyprbars.add_button({
+      bg_color = "rgba(febc2eff)",
+      fg_color = "rgba(5c3c00ff)",
+      size = 13,
+      icon = "−",
+      action = "ryoku-winstash hide",
+  })
+  hl.plugin.hyprbars.add_button({
+      bg_color = "rgba(28c840ff)",
+      fg_color = "rgba(004d0cff)",
+      size = 13,
+      icon = "+",
+      action = "ryoku-winstash maximize",
+  })
+  ' >/dev/null 2>&1 || true
+fi

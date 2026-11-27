@@ -509,8 +509,9 @@ def main():
     if action == "focus" and len(sys.argv) >= 3:
         swap = "--swap" in sys.argv
         return cmd_focus(sys.argv[2], swap=swap)
-    if action == "maximize" and len(sys.argv) >= 3:
-        return cmd_maximize(sys.argv[2])
+    if action == "maximize":
+        addr = sys.argv[2] if len(sys.argv) >= 3 else (hypr_json("activewindow") or {}).get("address")
+        return cmd_maximize(addr)
     if action == "close" and len(sys.argv) >= 3:
         return cmd_close(sys.argv[2])
     if action == "restore-all":
