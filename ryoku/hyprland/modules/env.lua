@@ -88,6 +88,13 @@ end
 -- Session-scoped GTK theme (never written globally to dconf/gsettings)
 hl.env("GTK_THEME", "adw-gtk3-dark")
 
+-- Suppress GTK3/GTK4 Client-Side Decoration (CSD) titlebar buttons session-wide.
+-- hyprbars draws the unified Ryoku titlebar instead; we don't want duplicates.
+-- GTK_DECORATION_LAYOUT=: means "no decoration buttons" (empty left and right lists).
+-- This is a process-environment override: it only takes effect inside this Wayland
+-- session and never touches ~/.config/gtk-*/settings.ini or dconf/gsettings.
+hl.env("GTK_DECORATION_LAYOUT", ":")
+
 -- Shared QML modules (Ryoku.Ui, Ryoku.PluginKit, Ryoku.Blobs) live in
 -- /usr/lib/qt6/qml on an installed system, which Qt finds on its own. A
 -- deploy.sh checkout puts them under ~/.local instead, and only the daemon
