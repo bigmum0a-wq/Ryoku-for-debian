@@ -27,7 +27,11 @@ Singleton {
         if (checkUpdatesProc.running) return;
         root._checkOutput = null
         root._checkExit = -1
-        if (root._backend === "xbps") {
+        if (root._backend === "apt") {
+            checkUpdatesProc.command = ["/usr/bin/bash", "-c",
+                "LC_ALL=C apt list --upgradable 2>/dev/null | grep '\\[upgradable from:' || true"
+            ]
+        } else if (root._backend === "xbps") {
             checkUpdatesProc.command = ["xbps-install", "-nu"]
         } else if (root._backend === "dnf") {
             checkUpdatesProc.command = ["/usr/bin/bash", "-c",
@@ -75,6 +79,7 @@ Singleton {
         command: ["/usr/bin/bash", "-c",
             "backend=$(ryoku-host pkgmgr 2>/dev/null) || exit 1; " +
             "case \"$backend\" in " +
+                "apt) command -v apt &>/dev/null ;; " +
                 "pacman) command -v checkupdates &>/dev/null ;; " +
                 "xbps) command -v xbps-install &>/dev/null ;; " +
                 "dnf) command -v dnf5 &>/dev/null || command -v dnf &>/dev/null ;; " +

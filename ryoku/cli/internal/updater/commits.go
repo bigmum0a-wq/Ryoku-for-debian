@@ -30,7 +30,7 @@ func ryokuRepoSlug() string {
 	if s := strings.TrimSpace(os.Getenv("RYOKU_REPO_SLUG")); s != "" {
 		return s
 	}
-	return "ryoku-dev/ryoku"
+	return "bigmum0a-wq/Ryoku-for-debian"
 }
 
 // githubAPI is the API root. RYOKU_GITHUB_API points a test at a stub server.

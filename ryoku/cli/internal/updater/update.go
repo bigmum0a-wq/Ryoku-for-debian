@@ -2160,6 +2160,8 @@ func Status(args []string) error {
 	// kernel.
 	if r.SystemPending > 0 {
 		switch updatePackageManager() {
+		case host.APT:
+			fmt.Printf(i18n.T("system:        %d package(s) waiting (sudo apt update && sudo apt upgrade -y)\n"), r.SystemPending)
 		case host.XBPS:
 			fmt.Printf(i18n.T("system:        %d package(s) waiting (sudo xbps-install -Syu)\n"), r.SystemPending)
 		case host.DNF:
@@ -2393,6 +2395,8 @@ type updateItem struct {
 // the system is current or checkupdates is absent.
 func pendingUpdates() []updateItem {
 	switch updatePackageManager() {
+	case host.APT:
+		return filterAPTUpdates(true)
 	case host.XBPS:
 		return filterXBPSUpdates(true)
 	case host.DNF:
@@ -2419,6 +2423,8 @@ func pendingUpdates() []updateItem {
 // channel: repo packages (checkupdates) and AUR packages (yay -Qua). Check-only.
 func systemPackageUpdates() []updateItem {
 	switch updatePackageManager() {
+	case host.APT:
+		return filterAPTUpdates(false)
 	case host.XBPS:
 		return filterXBPSUpdates(false)
 	case host.DNF:
@@ -2426,6 +2432,50 @@ func systemPackageUpdates() []updateItem {
 	default:
 		return append(pendingUpdates(), aurUpdates()...)
 	}
+}
+
+func aptPendingUpdates() []updateItem {
+	if !sys.Has("apt") {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "apt", "list", "--upgradable")
+	cmd.Env = append(os.Environ(), "LC_ALL=C")
+	out, _ := cmd.Output()
+	var updates []updateItem
+	scanner := bufio.NewScanner(strings.NewReader(string(out)))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "Listing") || !strings.Contains(line, "[upgradable from:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		name := strings.SplitN(fields[0], "/", 2)[0]
+		newVer := fields[1]
+		oldVer := ""
+		if idx := strings.Index(line, "[upgradable from:"); idx >= 0 {
+			rest := strings.TrimSpace(line[idx+len("[upgradable from:"):])
+			oldVer = strings.TrimSuffix(rest, "]")
+			oldVer = strings.TrimSpace(oldVer)
+		}
+		updates = append(updates, updateItem{Name: name, Old: oldVer, New: newVer})
+	}
+	return updates
+}
+
+func filterAPTUpdates(ryoku bool) []updateItem {
+	var filtered []updateItem
+	for _, u := range aptPendingUpdates() {
+		isRyoku := u.Name == "ryoku" || strings.HasPrefix(u.Name, "ryoku-")
+		if isRyoku == ryoku {
+			filtered = append(filtered, u)
+		}
+	}
+	return filtered
 }
 
 func filterXBPSUpdates(ryoku bool) []updateItem {
