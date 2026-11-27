@@ -85,7 +85,7 @@ hl.window_rule({
     match = {
         class = "^(code|code-oss|code%-url%-handler|vscodium|gimp.*|gimp|vlc|steam|gamescope)$",
     },
-    ["plugin:hyprbars:no_bar"] = true,
+    effects = { ["hyprbars:no_bar"] = true },
 })
 
 hl.window_rule({
