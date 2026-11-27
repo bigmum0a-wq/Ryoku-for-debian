@@ -76,7 +76,7 @@ BORDERLESS_CLASSES = {
 
 
 def load_controls_cfg():
-    cfg = {"mode": "all", "include": [], "exclude": []}
+    cfg = {"mode": "borderless", "include": [], "exclude": []}
     if os.path.isfile(CONTROLS_CFG_FILE):
         try:
             with open(CONTROLS_CFG_FILE, "r", encoding="utf-8") as f:
@@ -309,7 +309,7 @@ def window_size_state(c, monitors):
 
 def cmd_win_list():
     cfg = load_controls_cfg()
-    mode = cfg.get("mode", "all")
+    mode = cfg.get("mode", "borderless")
     if mode == "off":
         print("[]")
         return 0
@@ -319,9 +319,14 @@ def cmd_win_list():
     ws_id = active_ws_id()
     clients = hypr_json("clients")
     monitors = hypr_json("monitors")
+    # Sort topmost-first (lower focusHistoryID = closer to top) so we can hide
+    # pills on background windows that are occluded by foreground windows.
+    ordered = sorted(clients, key=lambda c: c.get("focusHistoryID", 9999))
     wins = []
     seen = set()
-    for c in clients:
+    higher_rects = []
+    pill_w, pill_h = 76, 22
+    for c in ordered:
         addr = c.get("address", "")
         if not addr or addr in seen or not c.get("mapped", True) or c.get("hidden", False):
             continue
@@ -330,27 +335,37 @@ def cmd_win_list():
         ws = c.get("workspace") or {}
         if ws.get("id") != ws_id:
             continue
-        cls = (c.get("class") or c.get("initialClass") or "").lower()
-        if cls in exclude_set:
-            continue
-        if mode == "borderless" and cls not in BORDERLESS_CLASSES and cls not in include_set:
-            continue
+        seen.add(addr)
         size = c.get("size") or [0, 0]
         at = c.get("at") or [0, 0]
-        if size[0] < 120 or size[1] < 80:
-            continue
-        seen.add(addr)
-        size_state, _, _ = window_size_state(c, monitors)
-        wins.append({
-            "address": addr,
-            "class": cls,
-            "x": at[0],
-            "y": at[1],
-            "w": size[0],
-            "h": size[1],
-            "fullscreen": c.get("fullscreen", 0),
-            "sizeState": size_state,
-        })
+        cls = (c.get("class") or c.get("initialClass") or "").lower()
+        eligible = (
+            cls not in exclude_set
+            and (mode != "borderless" or cls in BORDERLESS_CLASSES or cls in include_set)
+            and size[0] >= 120
+            and size[1] >= 80
+        )
+        if eligible:
+            px = max(4, at[0] + size[0] - pill_w - 8)
+            py = max(4, at[1] + 6)
+            occluded = any(
+                px < hx + hw and px + pill_w > hx and py < hy + hh and py + pill_h > hy
+                for hx, hy, hw, hh in higher_rects
+            )
+            if not occluded:
+                size_state, _, _ = window_size_state(c, monitors)
+                wins.append({
+                    "address": addr,
+                    "class": cls,
+                    "x": at[0],
+                    "y": at[1],
+                    "w": size[0],
+                    "h": size[1],
+                    "fullscreen": c.get("fullscreen", 0),
+                    "sizeState": size_state,
+                })
+        if size[0] > 0 and size[1] > 0:
+            higher_rects.append((at[0], at[1], size[0], size[1]))
     print(json.dumps(wins))
     return 0
 
@@ -464,7 +479,7 @@ def cmd_controls_toggle(app_class=None):
             exc.append(cls)
         cfg["exclude"] = exc
     else:
-        cfg["mode"] = "all" if cfg.get("mode") == "off" else "off"
+        cfg["mode"] = "borderless" if cfg.get("mode") == "off" else "off"
     save_controls_cfg(cfg)
     return 0
 

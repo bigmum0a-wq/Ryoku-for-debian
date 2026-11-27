@@ -240,6 +240,9 @@ PanelWindow {
                     interval: IrisStyle.duration(180)
                     onTriggered: Notifications.timeoutNotification(banner.notification.notificationId)
                 }
+                HoverHandler {
+                    cursorShape: Qt.PointingHandCursor
+                }
                 TapHandler {
                     onTapped: root.activate(banner.notification)
                 }

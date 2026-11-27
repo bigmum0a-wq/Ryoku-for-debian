@@ -78,14 +78,17 @@ Singleton {
     // can drive it.
     property var popups: []
 
-    // Popup timer rule (contract 07 sec 8): critical or expire_timeout 0 persists;
-    // -1 uses popupDuration; n>0 uses min(popupDuration, n).
+    // Popup timer rule: never persist indefinitely on screen; cap at 60s max.
+    // Critical or expire_timeout 0 gets 60000ms (1 minute max), -1 uses popupDuration,
+    // n>0 uses min(popupDuration, n).
+    readonly property int maxPopupDuration: 60000
+
     function popupTtl(n) {
-        if (n.urgency === NotificationUrgency.Critical) return -1;
+        if (n.urgency === NotificationUrgency.Critical) return root.maxPopupDuration;
         var et = n.expireTimeout;
-        if (et === 0) return -1;
-        if (et < 0) return root.popupDuration;
-        return Math.min(root.popupDuration, et);
+        if (et === 0) return root.maxPopupDuration;
+        if (et < 0) return Math.min(root.maxPopupDuration, root.popupDuration);
+        return Math.min(root.maxPopupDuration, Math.min(root.popupDuration, et));
     }
 
     function cancelPopupTimeout(id) {

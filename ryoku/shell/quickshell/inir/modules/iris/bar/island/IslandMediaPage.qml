@@ -427,6 +427,7 @@ GridLayout {
             font.weight: IrisStyle.weight(Font.DemiBold)
             horizontalAlignment: Text.AlignHCenter
             Layout.minimumWidth: Math.round(40 * IrisStyle.density)
+            HoverHandler { cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: stepper.reset() }
         }
         GlyphButton {

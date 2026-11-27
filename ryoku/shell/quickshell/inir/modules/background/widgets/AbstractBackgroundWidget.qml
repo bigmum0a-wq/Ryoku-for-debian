@@ -855,6 +855,10 @@ AbstractWidget {
     // Locked widgets intentionally disable AbstractWidget's drag MouseArea.
     // Keep selection available through a separate tap handler so locking a
     // widget never makes it unreachable from the desktop editor.
+    HoverHandler {
+        enabled: GlobalStates.widgetEditMode && root.locked
+        cursorShape: Qt.PointingHandCursor
+    }
     TapHandler {
         enabled: GlobalStates.widgetEditMode && root.locked
         acceptedButtons: Qt.LeftButton

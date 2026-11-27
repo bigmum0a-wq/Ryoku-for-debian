@@ -116,7 +116,7 @@ Item {
         requireEnabledPanel: false
         open: GlobalStates.settingsOverlayOpen || GlobalStates.irisSettingsWarm
         closeGraceMs: IrisStyle.settleDuration + 120
-        component: String(Config.options?.iris?.appearance?.settingsHost ?? "overlay") === "window"
+        component: String(Config.options?.iris?.appearance?.settingsHost ?? "window") === "window"
             ? irisSettingsWindowComponent : irisSettingsOverlayComponent
     }
 
