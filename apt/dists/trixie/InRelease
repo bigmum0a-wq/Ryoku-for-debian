@@ -4,26 +4,26 @@ Hash: SHA512
 Architectures: amd64 all
 Codename: trixie
 Components: main
-Date: Fri, 27 Nov 2026 03:24:59 +0000
+Date: Fri, 27 Nov 2026 06:44:45 +0000
 Label: Ryoku Debian
 Origin: Ryoku
 Suite: trixie
 MD5Sum:
- cdf3fe07c42982681fc04088892d67c6             3848 main/binary-amd64/Packages
- ec10a63ca69ca2f88416e36660b6e58b             1509 main/binary-amd64/Packages.gz
+ fa96b323ea63e199fd95a367b2939159             3848 main/binary-amd64/Packages
+ c7a9f4f506f267887555278a42875331             1521 main/binary-amd64/Packages.gz
 SHA1:
- d46f07c83985ad035cb2b0e65c818f4f46a520c7             3848 main/binary-amd64/Packages
- 99eabc33bd558bb7aeb35a4e0870db8c0fefb4fe             1509 main/binary-amd64/Packages.gz
+ aa39014b37c38b27367a68019efc07f4a59ca9fa             3848 main/binary-amd64/Packages
+ ca4b8ec28410c010b1dc0b26a64d5f2d6a9d961e             1521 main/binary-amd64/Packages.gz
 SHA256:
- fa56bae32feb3bfca97252ec7dc0477deeaf896cd05021b8d37703ce9de28154             3848 main/binary-amd64/Packages
- 74475534e285772f4a49ba4117a6a98aa747c5d2874a00cc2b56e195071f09c0             1509 main/binary-amd64/Packages.gz
+ 03cb37b763f34ad7095e2eb8bc2239e799e915805aad0186863935ee7aec9c1f             3848 main/binary-amd64/Packages
+ 3267bcf4800272bd3dcdc27c228494088c0063ec2c5c7e5bcb80ef5f6cc7116c             1521 main/binary-amd64/Packages.gz
 SHA512:
- 04792da248fcbbf83ac85b7cfa9301f9bb9345cbd9905189b694e96521f523ae6dff532a54e3e87e211d549f8cd28427ede42b4b06ead5fd4c0aae79ac29d19a             3848 main/binary-amd64/Packages
- 9678621e44d580090b9c882aca9e8f07771b7fedfff54d4e46c1898680803ffce10fdfef6a9b2d6d374d329744df35ecedc0abb76e7c74be146e68afa4c0aed5             1509 main/binary-amd64/Packages.gz
+ 0e6ad266c1326bff46a7ecbc796e5e6b4790b39a042157bdca7c064a50ce3dae88fd82a5ded9229ad7731ecfa1b119585c3b0634fc073291aac0e8749267a8ba             3848 main/binary-amd64/Packages
+ 266abec348f369103be07a8f6d68f657e56743ca7d1cbac05cb81998908f7db227eedfd919df4bf0a23bd6296d4ed1472b3ca0166fe6a9d3269bcc8ecf71c7fe             1521 main/binary-amd64/Packages.gz
 -----BEGIN PGP SIGNATURE-----
 
-iIoEARYKADIWIQS1KxZH7dzda4gBaXsTzgkKTuRK2wUCawj4CxQccGFja2FnaW5n
-QHJ5b2t1LmRldgAKCRATzgkKTuRK24tWAQCdv5pfZ8+ja2n7YNirkrgMFyQqC1+L
-w2oM+CCbe7NzBgD/WqAuZojVaPcJvOguX2rEkUSMJevlOq7IBM2COd44yAo=
-=aJFC
+iIoEARYKADIWIQS1KxZH7dzda4gBaXsTzgkKTuRK2wUCawkm3RQccGFja2FnaW5n
+QHJ5b2t1LmRldgAKCRATzgkKTuRK2x9mAP4gQ+5/L3gbKFjyuSAGNsj/OMNNKkpS
+S+Du1p06Wvl82QD/RGs08muj81gd4Xfe840EycB/CPU82CE+bN9Jf0r5ig0=
+=hGtZ
 -----END PGP SIGNATURE-----
