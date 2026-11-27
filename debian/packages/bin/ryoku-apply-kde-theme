@@ -26,14 +26,16 @@ APPLY = "--no-apply" not in sys.argv
 
 
 def is_ryoku_session() -> bool:
-    if os.environ.get("RYOKU_SESSION_KEY") or os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
-        return True
     desktop = (
         os.environ.get("XDG_CURRENT_DESKTOP", "")
         + ":"
         + os.environ.get("XDG_SESSION_DESKTOP", "")
     ).lower()
-    return any(tok in desktop for tok in ("hyprland", "ryoku", "niri", "wayfire"))
+    if any(tok in desktop for tok in ("kde", "plasma", "gnome", "xfce", "mate", "lxqt", "cinnamon")):
+        return False
+    if any(tok in desktop for tok in ("hyprland", "ryoku", "niri", "wayfire")):
+        return True
+    return bool(os.environ.get("RYOKU_SESSION_KEY") or os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"))
 
 
 def sync_qt6ct_conf() -> None:
@@ -48,8 +50,12 @@ def sync_qt6ct_conf() -> None:
 
     cp.set("Appearance", "custom_palette", "true")
     cp.set("Appearance", "color_scheme_path", QT6CT_COLOR)
-    if not cp.has_option("Appearance", "icon_theme"):
-        cp.set("Appearance", "icon_theme", "Papirus-Dark")
+    cur_icon = cp.get("Appearance", "icon_theme", fallback="").strip()
+    # MacOS-3D places/scalable/*.svg are PNGs misnamed .svg; Qt6's SVG loader rejects them (blank folders).
+    if not cur_icon or cur_icon == "MacOS-3D":
+        ryoku_folders = os.path.join(HOME, ".local", "share", "icons", "ryoku-folders")
+        default_icon = "ryoku-folders" if os.path.exists(ryoku_folders) else "Papirus-Dark"
+        cp.set("Appearance", "icon_theme", default_icon)
     if not cp.has_option("Appearance", "style"):
         cp.set("Appearance", "style", "Fusion")
 

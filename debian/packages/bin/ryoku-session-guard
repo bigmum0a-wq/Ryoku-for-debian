@@ -13,12 +13,18 @@ CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ryoku/session-guard"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 is_ryoku_session() {
+  # Explicit non-Ryoku desktop always wins even if RYOKU_* leaked in systemd --user env
+  case "${XDG_CURRENT_DESKTOP:-}:${XDG_SESSION_DESKTOP:-}" in
+    *KDE*|*kde*|*Plasma*|*plasma*|*GNOME*|*gnome*|*XFCE*|*xfce*|*MATE*|*LXQt*|*Cinnamon*)
+      return 1
+      ;;
+    *Hyprland*|*hyprland*|*Ryoku*|*ryoku*)
+      return 0
+      ;;
+  esac
+  [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && return 0
   [ -n "${RYOKU_SESSION_KEY:-}" ] && return 0
   [ "${RYOKU_ACTIVE:-0}" = "1" ] && return 0
-  [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && return 0
-  case "${XDG_CURRENT_DESKTOP:-}:${XDG_SESSION_DESKTOP:-}" in
-    *Hyprland*|*hyprland*|*Ryoku*|*ryoku*) return 0 ;;
-  esac
   return 1
 }
 
@@ -89,11 +95,13 @@ enter_other() {
     # Clear Ryoku-scoped environment variables from systemd --user so KDE/GNOME/XFCE
     # never inherit qt6ct, disabled Qt decorations, or Ryoku's Polkit agent flag.
     systemctl --user unset-environment \
-      RYOKU_SESSION_KEY RYOKU_ACTIVE \
+      RYOKU_SESSION_KEY RYOKU_ACTIVE RYOKU_WM RYOKU_POLKIT_AGENT \
       QT_QPA_PLATFORMTHEME QT_WAYLAND_DISABLE_WINDOWDECORATION \
-      GSK_RENDERER GDK_BACKEND GTK_THEME QT_QPA_PLATFORM \
-      QT_AUTO_SCREEN_SCALE_FACTOR ELECTRON_OZONE_PLATFORM_HINT \
-      RYOKU_POLKIT_AGENT XCURSOR_THEME XCURSOR_SIZE \
+      QT_QPA_PLATFORM QT_AUTO_SCREEN_SCALE_FACTOR QT_WAYLAND_RECONNECT \
+      GSK_RENDERER GDK_BACKEND GTK_THEME GTK_DECORATION_LAYOUT \
+      ELECTRON_OZONE_PLATFORM_HINT \
+      XCURSOR_THEME XCURSOR_SIZE HYPRCURSOR_THEME HYPRCURSOR_SIZE \
+      HYPRLAND_CMD HYPRLAND_NO_SD_NOTIFY HYPRLAND_INSTANCE_SIGNATURE \
       2>/dev/null || true
   fi
 
