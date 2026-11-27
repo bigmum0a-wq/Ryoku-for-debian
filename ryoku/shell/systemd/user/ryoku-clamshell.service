@@ -3,7 +3,7 @@ Description=Ryoku clamshell policy daemon
 ConditionUser=!@system
 PartOf=ryoku-session.target
 After=ryoku-session.target
-ConditionEnvironment=WAYLAND_DISPLAY
+ConditionEnvironment=RYOKU_SESSION_KEY
 StartLimitIntervalSec=60
 StartLimitBurst=5
 
@@ -12,7 +12,8 @@ ExecStart=/usr/bin/ryoku-clamshell daemon
 Restart=on-failure
 RestartSec=2
 TimeoutStopSec=5
-Slice=session.slice
+Slice=ryoku-session.slice
 
+KillMode=control-group
 [Install]
 WantedBy=ryoku-session.target

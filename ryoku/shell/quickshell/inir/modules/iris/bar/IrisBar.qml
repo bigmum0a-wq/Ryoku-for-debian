@@ -611,10 +611,21 @@ Scope {
                 // Switching layers recreates the surface above the Dock's window, whose icons it would cover.
                 onOverlaidChanged: if (!barWindow.overlaid) GlobalStates.irisChassisEpoch++
                 WlrLayershell.layer: barWindow.overlaid || cardFrameLayer.framed ? WlrLayer.Overlay : WlrLayer.Top
-                WlrLayershell.keyboardFocus: barWindow.pinned || stage.cardOpen || (controlCentreLoader.item?.morphOpen ?? false)
+                readonly property bool _exclusiveFocus: barWindow.pinned || stage.cardOpen || (controlCentreLoader.item?.morphOpen ?? false)
                     || (dockLoader.item?.menuOpen ?? false) || (spotlightLoader.item?.here && GlobalStates.searchOpen)
                     || (galleryLoader.item?.morphOpen ?? false) || (widgetBarLoader.item?.holdsKeyboard ?? false)
-                    ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+                WlrLayershell.keyboardFocus: barWindow._exclusiveFocus ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+                on_ExclusiveFocusChanged: {
+                    if (!barWindow._exclusiveFocus && !lifoRestoreProc.running)
+                        lifoRestoreProc.running = true
+                }
+                Process {
+                    id: lifoRestoreProc
+                    command: [
+                        "bash", "-c",
+                        "BIN=$([ -x \"$HOME/.local/bin/ryoku-winstash\" ] && echo \"$HOME/.local/bin/ryoku-winstash\" || echo ryoku-winstash); exec \"$BIN\" pop-if-empty"
+                    ]
+                }
                 anchors { left: true; right: true; top: true; bottom: true }
                 readonly property bool suppressed: islandLoader.active
                     ? (islandLoader.item?.suppressed ?? false) : false

@@ -18,6 +18,7 @@ ShellRoot {
     property real stackBottom: 24
 
     readonly property string stateFile: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/ryoku-winstash-open"
+    readonly property string winstashCmd: "BIN=$([ -x \"$HOME/.local/bin/ryoku-winstash\" ] && echo \"$HOME/.local/bin/ryoku-winstash\" || echo ryoku-winstash)"
 
     function resolveAppInfo(appClass) {
         var cls = (appClass || "").trim();
@@ -40,7 +41,7 @@ ShellRoot {
         id: listProc
         command: [
             "bash", "-c",
-            "printf '%s\\n' \"$([ -f '" + root.stateFile + "' ] && echo 1 || echo 0)\"; ryoku-winstash list; echo '---WINLIST---'; ryoku-winstash win-list"
+            root.winstashCmd + "; printf '%s\\n' \"$([ -f '" + root.stateFile + "' ] && echo 1 || echo 0)\"; \"$BIN\" list; echo '---WINLIST---'; \"$BIN\" win-list"
         ]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -74,7 +75,10 @@ ShellRoot {
 
     Process { id: actionProc; onExited: root.refresh() }
     function runAction(args) {
-        actionProc.command = ["ryoku-winstash"].concat(args);
+        var quoted = args.map(function(a) {
+            return "'" + String(a).replace(/'/g, "'\\''") + "'";
+        }).join(" ");
+        actionProc.command = ["bash", "-c", root.winstashCmd + "; exec \"$BIN\" " + quoted];
         actionProc.running = true;
     }
 
@@ -90,21 +94,28 @@ ShellRoot {
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.namespace: "ryoku-wincontrols"
 
-        property Component regionComp: Component { Region {} }
+        // Input mask: only the pill rectangles receive events, the rest is click-through.
+        // We use item-based regions — rebuilt lazily via Qt.callLater to avoid tight loops.
+        property Component _regionComp: Component {
+            Region { }
+        }
+        property var _maskRegs: []
 
         function rebuildMask() {
-            var oldRegs = controlsMask.regions;
+            // Destroy previous region objects
+            for (var j = 0; j < _maskRegs.length; j++) {
+                if (_maskRegs[j] && !_maskRegs[j].destroyed) _maskRegs[j].destroy();
+            }
             var regs = [];
             for (var i = 0; i < pillRepeater.count; i++) {
                 var it = pillRepeater.itemAt(i);
                 if (it && it.visible) {
-                    regs.push(regionComp.createObject(controlsMask, { item: it }));
+                    var r = _regionComp.createObject(winControlsWin, { item: it });
+                    if (r) regs.push(r);
                 }
             }
+            _maskRegs = regs;
             controlsMask.regions = regs;
-            for (var j = 0; j < oldRegs.length; j++) {
-                if (oldRegs[j]) oldRegs[j].destroy();
-            }
         }
 
         mask: Region {
@@ -116,49 +127,63 @@ ShellRoot {
             id: pillRepeater
             model: root.activeWindows
             onCountChanged: Qt.callLater(winControlsWin.rebuildMask)
+
             delegate: Rectangle {
                 id: pill
                 required property var modelData
-                x: Math.max(4, Math.min(winControlsWin.width - width - 4, modelData.x + modelData.w - width - 8))
-                y: Math.max(4, Math.min(winControlsWin.height - height - 4, modelData.y + 6))
-                width: 74
-                height: 22
-                radius: 11
-                color: "#d90d1729"
-                border.width: 1
-                border.color: "#4438bdf8"
 
+                // Position pill at top-right of its window (screen-absolute coordinates from win-list)
+                x: Math.max(4, Math.min(winControlsWin.width  - width  - 4,
+                                        modelData.x + modelData.w - width - 8))
+                y: Math.max(4, Math.min(winControlsWin.height - height - 4,
+                                        modelData.y + 6))
+                width: 76; height: 22; radius: 11
+                color: "#d90d1729"
+                border.width: 1; border.color: "#4438bdf8"
+
+                // Rebuild mask whenever a pill moves (window moved/resized)
                 onXChanged: Qt.callLater(winControlsWin.rebuildMask)
                 onYChanged: Qt.callLater(winControlsWin.rebuildMask)
                 Component.onCompleted: Qt.callLater(winControlsWin.rebuildMask)
+                Component.onDestruction: Qt.callLater(winControlsWin.rebuildMask)
 
                 Row {
                     anchors.centerIn: parent
-                    spacing: 4
+                    spacing: 3
 
-                    // Minimize / Stash (−)
+                    // ── Stash / hide (−) ──────────────────────────────────────
                     Rectangle {
-                        width: 20; height: 18; radius: 9
+                        width: 22; height: 18; radius: 9
                         color: minMa.containsMouse ? "#44facc15" : "transparent"
-                        Text { anchors.centerIn: parent; text: "−"; color: "#fde047"; font.pixelSize: 12; font.bold: true }
+                        Text {
+                            anchors.centerIn: parent; text: "−"
+                            color: "#fde047"; font.pixelSize: 13; font.bold: true
+                        }
                         MouseArea {
                             id: minMa; anchors.fill: parent; hoverEnabled: true
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
                             onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton) root.runAction(["controls-toggle"]);
-                                else root.runAction(["hide-addr", modelData.address]);
+                                if (mouse.button === Qt.RightButton)
+                                    root.runAction(["controls-toggle"]);
+                                else
+                                    root.runAction(["hide-addr", modelData.address]);
                             }
                         }
                     }
 
-                    // Maximize / Shrink 3-state cycle (□ -> ❐ -> ▫)
+                    // ── Resize cycle: □ normal→max | ❐ max→medium | ▫ medium→compact ──
                     Rectangle {
-                        width: 20; height: 18; radius: 9
+                        width: 22; height: 18; radius: 9
                         color: maxMa.containsMouse ? "#444ade80" : "transparent"
                         Text {
                             anchors.centerIn: parent
-                            text: modelData.sizeState === "max" ? "❐" : (modelData.sizeState === "medium" ? "▫" : "□")
+                            text: {
+                                if (modelData.sizeState === "max")     return "❐";
+                                if (modelData.sizeState === "medium")  return "▫";
+                                if (modelData.sizeState === "compact") return "□";
+                                return "□";
+                            }
                             color: modelData.sizeState === "max" ? "#7dd3fc" : "#86efac"
                             font.pixelSize: 10; font.bold: true
                         }
@@ -167,24 +192,31 @@ ShellRoot {
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
                             onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton) root.runAction(["controls-toggle"]);
-                                else root.runAction(["maximize", modelData.address]);
+                                if (mouse.button === Qt.RightButton)
+                                    root.runAction(["controls-toggle"]);
+                                else
+                                    root.runAction(["maximize", modelData.address]);
                             }
                         }
                     }
 
-                    // Close (✕)
+                    // ── Close (✕) ─────────────────────────────────────────────
                     Rectangle {
-                        width: 20; height: 18; radius: 9
+                        width: 22; height: 18; radius: 9
                         color: closeWinMa.containsMouse ? "#55fb7185" : "transparent"
-                        Text { anchors.centerIn: parent; text: "✕"; color: "#fda4af"; font.pixelSize: 10; font.bold: true }
+                        Text {
+                            anchors.centerIn: parent; text: "✕"
+                            color: "#fda4af"; font.pixelSize: 10; font.bold: true
+                        }
                         MouseArea {
                             id: closeWinMa; anchors.fill: parent; hoverEnabled: true
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
                             onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton) root.runAction(["controls-toggle"]);
-                                else root.runAction(["close", modelData.address]);
+                                if (mouse.button === Qt.RightButton)
+                                    root.runAction(["controls-toggle"]);
+                                else
+                                    root.runAction(["close", modelData.address]);
                             }
                         }
                     }
@@ -203,65 +235,97 @@ ShellRoot {
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "ryoku-winstash"
-        implicitWidth: 128; implicitHeight: 104
+        // Fixed dimensions: card 90×72 + 3-card fan offset (3×8=24 x, 3×6=18 y) + 14px padding
+        width: 136; height: 110
 
         property bool dragging: false
         property bool justDragged: false
         property real pressX: 0
         property real pressY: 0
 
+        // Computed top-card info (index 0 = most recently stashed)
+        readonly property var topInfo: root.stashed.length > 0
+            ? root.resolveAppInfo(root.stashed[0]["class"]) : ({ name: "", icon: "" })
+
         Item {
             anchors.fill: parent
 
+            // ── Fan of up to 4 ghost cards behind the top card ──────────────
             Repeater {
                 model: Math.min(4, root.stashed.length)
                 delegate: Rectangle {
                     required property int index
+                    // rev=0 → topmost (frontmost) card; rev=3 → deepest background
                     readonly property int rev: Math.min(4, root.stashed.length) - 1 - index
-                    readonly property var topInfo: root.stashed.length > 0
-                        ? root.resolveAppInfo(root.stashed[0]["class"]) : ({ name: "", icon: "" })
-                    width: 86; height: 68
-                    x: 16 + rev * 7; y: 16 + rev * 5
-                    rotation: (rev - 1) * 3.5; radius: 12
-                    color: rev === 0 ? "#e6101828" : (rev === 1 ? "#cc162238" : "#aa1c2d4a")
-                    border.width: collapsedWin.dragging && rev === 0 ? 2 : 1
-                    border.color: collapsedWin.dragging && rev === 0 ? "#38bdf8" : (rev === 0 ? "#8038bdf8" : "#4094a3b8")
 
+                    // Cards are 90×72, fanned from bottom-left corner with small offsets
+                    width: 90; height: 72
+                    // Anchor fan to bottom-left: main card at (10, 14), background cards shift right+up
+                    x: 10 + rev * 8
+                    y: 14 + rev * 6
+                    rotation: rev === 0 ? 0 : (rev % 2 === 0 ? 2.5 : -2.5)
+                    radius: 12
+                    color: {
+                        if (rev === 0) return collapsedWin.dragging ? "#f0101828" : "#e6101828";
+                        if (rev === 1) return "#cc162238";
+                        if (rev === 2) return "#aa1c2d4a";
+                        return "#771c2d4a";
+                    }
+                    border.width: rev === 0 && collapsedWin.dragging ? 2 : 1
+                    border.color: rev === 0
+                        ? (collapsedWin.dragging ? "#38bdf8" : "#8038bdf8")
+                        : "#3094a3b8"
+
+                    // Only the top card shows content
                     ColumnLayout {
                         anchors.fill: parent; anchors.margins: 8
                         visible: rev === 0; spacing: 4
+
                         RowLayout {
                             Layout.fillWidth: true; spacing: 5
                             Image {
-                                source: topInfo.icon; width: 14; height: 14
-                                sourceSize.width: 14; sourceSize.height: 14
-                                fillMode: Image.PreserveAspectFit
+                                source: collapsedWin.topInfo.icon
+                                width: 16; height: 16
+                                sourceSize.width: 16; sourceSize.height: 16
+                                fillMode: Image.PreserveAspectFit; smooth: true
                             }
                             Text {
-                                text: topInfo.name; color: "#e2e8f0"
-                                font.pixelSize: 10; font.bold: true
+                                text: collapsedWin.topInfo.name
+                                color: "#e2e8f0"; font.pixelSize: 10; font.bold: true
                                 elide: Text.ElideRight; Layout.fillWidth: true
                             }
                         }
                         Text {
                             text: root.stashed.length > 0 ? (root.stashed[0].title || "") : ""
-                            color: "#94a3b8"; font.pixelSize: 8; elide: Text.ElideRight
-                            maximumLineCount: 2; wrapMode: Text.Wrap; Layout.fillWidth: true
+                            color: "#94a3b8"; font.pixelSize: 8
+                            elide: Text.ElideRight; maximumLineCount: 2
+                            wrapMode: Text.Wrap; Layout.fillWidth: true; Layout.fillHeight: true
                         }
                     }
                 }
             }
 
+            // ── Count badge (circle) — top-right corner of the panel ────────
             Rectangle {
-                anchors { top: parent.top; right: parent.right; topMargin: 8; rightMargin: 8 }
-                width: 22; height: 22; radius: 11; color: "#38bdf8"
-                Text { anchors.centerIn: parent; text: root.stashed.length; color: "#061529"; font.pixelSize: 11; font.bold: true }
+                id: countBadge
+                anchors { top: parent.top; right: parent.right; topMargin: 6; rightMargin: 6 }
+                width: 24; height: 24; radius: 12
+                color: "#38bdf8"
+                border.width: 2; border.color: "#0d1b2e"
+                Text {
+                    anchors.centerIn: parent
+                    text: root.stashed.length
+                    color: "#061529"; font.pixelSize: 11; font.bold: true
+                }
             }
 
+            // ── Drag / click handler ─────────────────────────────────────────
             MouseArea {
                 anchors.fill: parent
-                pressAndHoldInterval: 320
+                pressAndHoldInterval: 300
                 cursorShape: collapsedWin.dragging ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+                z: 10
+
                 onPressed: mouse => {
                     collapsedWin.pressX = mouse.x;
                     collapsedWin.pressY = mouse.y;
@@ -275,17 +339,14 @@ ShellRoot {
                     if (!collapsedWin.dragging) return;
                     var dx = mouse.x - collapsedWin.pressX;
                     var dy = mouse.y - collapsedWin.pressY;
-                    var maxR = (collapsedWin.screen ? collapsedWin.screen.width : 1280) - collapsedWin.width;
-                    var maxB = (collapsedWin.screen ? collapsedWin.screen.height : 720) - collapsedWin.height;
-                    root.stackRight  = Math.max(0, Math.min(maxR, root.stackRight - dx));
-                    root.stackBottom = Math.max(0, Math.min(maxB, root.stackBottom - dy));
+                    var scrW = collapsedWin.screen ? collapsedWin.screen.width  : 1280;
+                    var scrH = collapsedWin.screen ? collapsedWin.screen.height : 720;
+                    root.stackRight  = Math.max(0, Math.min(scrW - collapsedWin.width,  root.stackRight  - dx));
+                    root.stackBottom = Math.max(0, Math.min(scrH - collapsedWin.height, root.stackBottom - dy));
                 }
-                onReleased: {
-                    collapsedWin.dragging = false;
-                }
+                onReleased: { collapsedWin.dragging = false; }
                 onClicked: {
-                    if (!collapsedWin.justDragged)
-                        root.runAction(["toggle-ui"]);
+                    if (!collapsedWin.justDragged) root.runAction(["toggle-ui"]);
                     collapsedWin.justDragged = false;
                 }
             }

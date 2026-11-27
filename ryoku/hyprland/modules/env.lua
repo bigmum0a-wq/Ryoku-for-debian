@@ -7,6 +7,22 @@ hl.env("XDG_SESSION_DESKTOP", "Hyprland")
 hl.env("XDG_SESSION_TYPE",    "wayland")
 hl.env("NO_AT_BRIDGE",        "1")
 
+-- Master session key: gates every Ryoku systemd user unit so nothing can start
+-- outside an active Ryoku session (e.g. under KDE/GNOME/XFCE).
+local session_key = os.getenv("RYOKU_SESSION_KEY")
+if not session_key or session_key == "" then
+    local f = io.open("/proc/sys/kernel/random/uuid", "r")
+    if f then
+        session_key = (f:read("*l") or ""):gsub("%s+", "")
+        f:close()
+    end
+    if not session_key or session_key == "" then
+        session_key = "ryoku-" .. tostring(os.time())
+    end
+end
+hl.env("RYOKU_SESSION_KEY", session_key)
+hl.env("RYOKU_ACTIVE",      "1")
+
 -- VA-API/GLX hints are nvidia-only, and forcing them when an iGPU drives the
 -- panel freezes video decode on hybrid laptops (#55); set them only when nvidia
 -- actually drives the internal panel, else let mesa auto-detect. Detect by the

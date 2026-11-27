@@ -12,8 +12,8 @@ hl.on("hyprland.start", function()
     -- strips WAYLAND_DISPLAY, falls back to DISPLAY, and crashes with
     -- "Authorization required, but no authorization protocol specified".
     hl.exec_cmd("command -v xhost >/dev/null 2>&1 && xhost +si:localuser:root >/dev/null 2>&1 || true")
-    hl.exec_cmd("systemctl --user import-environment HYPRLAND_INSTANCE_SIGNATURE DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE NO_AT_BRIDGE 2>/dev/null || true")
-    hl.exec_cmd("dbus-update-activation-environment --systemd HYPRLAND_INSTANCE_SIGNATURE DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE NO_AT_BRIDGE >/dev/null 2>&1 || true")
+    hl.exec_cmd("systemctl --user import-environment RYOKU_SESSION_KEY RYOKU_ACTIVE HYPRLAND_INSTANCE_SIGNATURE DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE NO_AT_BRIDGE QT_QPA_PLATFORMTHEME QT_WAYLAND_DISABLE_WINDOWDECORATION GSK_RENDERER GDK_BACKEND QT_QPA_PLATFORM QT_AUTO_SCREEN_SCALE_FACTOR ELECTRON_OZONE_PLATFORM_HINT RYOKU_POLKIT_AGENT XCURSOR_THEME XCURSOR_SIZE 2>/dev/null || true")
+    hl.exec_cmd("dbus-update-activation-environment --systemd RYOKU_SESSION_KEY RYOKU_ACTIVE HYPRLAND_INSTANCE_SIGNATURE DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE NO_AT_BRIDGE QT_QPA_PLATFORMTHEME QT_WAYLAND_DISABLE_WINDOWDECORATION GSK_RENDERER GDK_BACKEND QT_QPA_PLATFORM QT_AUTO_SCREEN_SCALE_FACTOR ELECTRON_OZONE_PLATFORM_HINT RYOKU_POLKIT_AGENT XCURSOR_THEME XCURSOR_SIZE >/dev/null 2>&1 || true")
     hl.exec_cmd("ryoku-wm-hyprland act cursor.set Bibata-Modern-Ice 24")
     hl.exec_cmd("gsettings set org.gnome.desktop.interface color-scheme prefer-dark")
     -- adw-gtk3-dark, not Adwaita-dark: stock Adwaita GTK3 hardcodes its colours,
@@ -43,7 +43,7 @@ hl.on("hyprland.start", function()
     -- pick it again every single time the buds come back. `watch` reconciles on
     -- every card event and owns a per-user lock, so compositor reloads cannot
     -- create duplicate subscriptions.
-    hl.exec_cmd("command -v ryoku-bt-audio >/dev/null 2>&1 && ryoku-bt-audio watch")
+    hl.exec_cmd("command -v ryoku-bt-audio >/dev/null 2>&1 && (systemd-run --user --scope --slice=ryoku-session.slice --unit=ryoku-bt-audio-watch ryoku-bt-audio watch >/dev/null 2>&1 || ryoku-bt-audio watch) &")
     -- Keyring default: no app ever prompts for a keyring password out of the box.
     -- `keyring init` records the mode once and seeds a blank passwordless default
     -- keyring for never-ask (idempotent; a no-op once a mode is chosen). Best
@@ -83,8 +83,8 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("command -v ryoku-session-intro >/dev/null 2>&1 && ryoku-session-intro keys-hint")
     -- Hide redundant GTK CSD close/max/min buttons (replaced by working Hyprland corner controls)
     hl.exec_cmd("command -v gsettings >/dev/null 2>&1 && gsettings set org.gnome.desktop.wm.preferences button-layout ':' >/dev/null 2>&1 &")
-    -- macOS-style window stash overlay & eco livewall CPU guard
-    hl.exec_cmd("flock -n /tmp/ryoku-winstash-ui.lock quickshell -p \"$HOME/.config/quickshell/winstash/shell.qml\" >/dev/null 2>&1 &")
-    hl.exec_cmd("flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco >/dev/null 2>&1 &")
+    -- macOS-style window stash overlay & eco livewall CPU guard (scoped inside ryoku-session.slice)
+    hl.exec_cmd("(systemd-run --user --scope --slice=ryoku-session.slice --unit=ryoku-winstash-ui flock -n /tmp/ryoku-winstash-ui.lock quickshell -p \"$HOME/.config/quickshell/winstash/shell.qml\" || flock -n /tmp/ryoku-winstash-ui.lock quickshell -p \"$HOME/.config/quickshell/winstash/shell.qml\") >/dev/null 2>&1 &")
+    hl.exec_cmd("(systemd-run --user --scope --slice=ryoku-session.slice --unit=ryoku-livewall-eco flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco || flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco) >/dev/null 2>&1 &")
     hl.exec_cmd("command -v ryoku-dock-sync >/dev/null 2>&1 && ryoku-dock-sync >/dev/null 2>&1 &")
 end)

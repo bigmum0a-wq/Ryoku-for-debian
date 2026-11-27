@@ -19,10 +19,52 @@ import os
 import subprocess
 import sys
 
-UI_STATE_FILE = os.path.join(
-    os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "ryoku-winstash-open"
-)
+RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+UI_STATE_FILE = os.path.join(RUNTIME_DIR, "ryoku-winstash-open")
+ORDER_FILE = os.path.join(RUNTIME_DIR, "ryoku-winstash-order.json")
 CONTROLS_CFG_FILE = os.path.expanduser("~/.config/ryoku/wincontrols.json")
+
+STASH_WS_NAME = "ryoku-stash"
+STASH_WS_TARGET = "name:ryoku-stash"
+
+
+def is_stashed_ws(ws):
+    name = (ws or {}).get("name", "")
+    return name in (STASH_WS_NAME, "special:stash")
+
+
+def load_lifo_order():
+    if os.path.isfile(ORDER_FILE):
+        try:
+            with open(ORDER_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                return [str(x) for x in data]
+        except Exception:
+            pass
+    return []
+
+
+def save_lifo_order(order):
+    tmp = ORDER_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(order, f)
+    os.replace(tmp, ORDER_FILE)
+
+
+def lifo_push(addr):
+    order = [a for a in load_lifo_order() if a != addr]
+    order.insert(0, addr)
+    save_lifo_order(order)
+
+
+def lifo_remove(addr):
+    order = [a for a in load_lifo_order() if a != addr]
+    save_lifo_order(order)
+
+
+def lifo_clear():
+    save_lifo_order([])
 
 # Apps that natively have no client-side titlebar/close/maximize buttons (Wayland/X11)
 BORDERLESS_CLASSES = {
@@ -82,9 +124,58 @@ def special_ws_name():
     return ""
 
 
-def close_special_if_open():
+def first_visible_addr(ws_id, clients=None, exclude_addr=None):
+    """Return the address of the most-recently-focused visible window on ws_id.
+
+    exclude_addr: skip this address (use when the caller just stashed a window
+                  and the client list was fetched before the move; without this
+                  the stashed window would be returned as the fallback and
+                  Hyprland would ghost-focus it, reopening the stash overlay).
+    """
+    if clients is None:
+        clients = hypr_json("clients")
+    candidates = []
+    for c in clients:
+        if not c.get("mapped", True) or c.get("hidden", False):
+            continue
+        if is_overlay_client(c):
+            continue
+        if exclude_addr and c.get("address") == exclude_addr:
+            continue
+        ws = c.get("workspace") or {}
+        if ws.get("id") != ws_id or ws.get("name", "").startswith("special:") or is_stashed_ws(ws):
+            continue
+        candidates.append(c)
+    if not candidates:
+        return None
+    # Sort by focusHistoryID ascending (lower = more recently focused in Hyprland)
+    candidates.sort(key=lambda c: c.get("focusHistoryID", 9999))
+    return candidates[0].get("address")
+
+
+def close_stash_and_refocus(ws_id, exclude_addr=None):
+    """Hide special:stash overlay and hand keyboard focus to a real visible window.
+
+    Hyprland keeps keyboard focus on the last window that had it, even when that
+    window is in a hidden special workspace. Any surface that briefly grabs and
+    releases the keyboard (a bar panel, a popup menu) then returns focus to that
+    hidden window and shows the special workspace again. Explicitly focusing a
+    concrete visible window on the normal workspace prevents this ghost-focus.
+
+    exclude_addr: address of a window that was just stashed — must not be used
+                  as the focus target even if it still appears in a stale list.
+    """
     if special_ws_name() == "special:stash":
         lua_dispatch('hl.dsp.workspace.toggle_special("stash")')
+
+    # Fetch a FRESH client list so the just-stashed window no longer appears
+    # on the normal workspace (the move dispatch completed synchronously above).
+    fresh_clients = hypr_json("clients")
+    target = first_visible_addr(ws_id, fresh_clients, exclude_addr=exclude_addr)
+    if target:
+        lua_dispatch(f'hl.dsp.focus({{ window = "address:{target}" }})')
+    else:
+        lua_dispatch(f'hl.dsp.focus({{ workspace = {ws_id} }})')
 
 
 def is_overlay_client(c):
@@ -100,45 +191,96 @@ def cmd_hide_addr(addr):
     target = next((c for c in clients if c.get("address") == addr), None)
     if not target or is_overlay_client(target):
         return 0
-    ws_name = (target.get("workspace") or {}).get("name", "")
+    ws = target.get("workspace") or {}
+    ws_name = ws.get("name", "")
     back = active_ws_id()
-    if ws_name.startswith("special:"):
+    if ws_name.startswith("special:") or is_stashed_ws(ws):
+        lifo_remove(addr)
         lua_dispatch(f'hl.dsp.window.move({{ workspace = {back}, window = "address:{addr}" }})')
         lua_dispatch(f'hl.dsp.focus({{ window = "address:{addr}" }})')
     else:
-        lua_dispatch(f'hl.dsp.window.move({{ workspace = "special:stash", silent = true, window = "address:{addr}" }})')
-        close_special_if_open()
-        lua_dispatch(f'hl.dsp.focus({{ workspace = {back} }})')
+        lifo_push(addr)
+        lua_dispatch(f'hl.dsp.window.move({{ workspace = "{STASH_WS_TARGET}", follow = false, window = "address:{addr}" }})')
+
+        # Hand focus to the next most-recent visible window on back (LIFO),
+        # excluding the just-stashed window.
+        close_stash_and_refocus(back, exclude_addr=addr)
     return 0
 
 
+def cmd_pop_lifo():
+    """Restore ONLY the most-recently-stashed window (Last In, First Out)."""
+    clients = hypr_json("clients")
+    stashed_addrs = {
+        c.get("address"): c
+        for c in clients
+        if c.get("address") and c.get("mapped", True) and not is_overlay_client(c)
+        and is_stashed_ws(c.get("workspace"))
+    }
+    if not stashed_addrs:
+        return 0
+    order = [a for a in load_lifo_order() if a in stashed_addrs]
+    target_addr = order[0] if order else next(iter(stashed_addrs))
+    return cmd_focus(target_addr)
+
+
+def cmd_pop_if_empty():
+    """Restore ONLY the last-stashed window (LIFO) if the active workspace has 0 visible windows."""
+    ws_id = active_ws_id()
+    if first_visible_addr(ws_id) is not None:
+        return 0
+    return cmd_pop_lifo()
+
+
 def cmd_hide():
+    ws_id = active_ws_id()
     win = hypr_json("activewindow")
     addr = win.get("address")
     if not addr:
-        return 0
+        # No visible window is open on the active workspace → LIFO restore of the last stashed window.
+        return cmd_pop_lifo()
+    # If the focused window is already on the normal workspace, stash it;
+    # if somehow no visible window is on ws_id, pop LIFO instead.
+    if first_visible_addr(ws_id) is None and (win.get("workspace") or {}).get("id") != ws_id:
+        return cmd_pop_lifo()
     return cmd_hide_addr(addr)
 
 
 def cmd_list():
     clients = hypr_json("clients")
-    stashed = []
-    seen = set()
+    by_addr = {}
     for c in clients:
         addr = c.get("address", "")
-        if not addr or addr in seen or not c.get("mapped", True):
+        if not addr or addr in by_addr or not c.get("mapped", True):
             continue
         if is_overlay_client(c):
             continue
         ws = c.get("workspace") or {}
-        if ws.get("name") == "special:stash":
-            seen.add(addr)
-            stashed.append({
+        if is_stashed_ws(ws):
+            by_addr[addr] = {
                 "address": addr,
                 "class": c.get("class") or c.get("initialClass") or "app",
                 "title": c.get("title") or c.get("initialTitle") or "Window",
                 "pid": c.get("pid", 0),
-            })
+                "_focus": c.get("focusHistoryID", 9999),
+            }
+
+    # Strict LIFO ordering: index 0 = most recently stashed window
+    order = [a for a in load_lifo_order() if a in by_addr]
+    stashed = []
+    seen = set()
+    for a in order:
+        item = by_addr[a]
+        stashed.append({k: v for k, v in item.items() if not k.startswith("_")})
+        seen.add(a)
+    remaining = sorted(
+        (v for a, v in by_addr.items() if a not in seen),
+        key=lambda x: x["_focus"],
+    )
+    for item in remaining:
+        order.append(item["address"])
+        stashed.append({k: v for k, v in item.items() if not k.startswith("_")})
+    save_lifo_order(order)
     print(json.dumps(stashed))
     return 0
 
@@ -223,11 +365,15 @@ def cmd_focus(addr, swap=False):
         prev_addr = active.get("address")
         if prev_addr == addr or is_overlay_client(active):
             prev_addr = None
+    lifo_remove(addr)
     lua_dispatch(f'hl.dsp.window.move({{ workspace = {ws_id}, window = "address:{addr}" }})')
     lua_dispatch(f'hl.dsp.focus({{ window = "address:{addr}" }})')
     if swap and prev_addr:
-        lua_dispatch(f'hl.dsp.window.move({{ workspace = "special:stash", silent = true, window = "address:{prev_addr}" }})')
-    close_special_if_open()
+        lifo_push(prev_addr)
+        lua_dispatch(f'hl.dsp.window.move({{ workspace = "{STASH_WS_TARGET}", follow = false, window = "address:{prev_addr}" }})')
+    # Close the stash overlay; focus was already given to addr above.
+    if special_ws_name() == "special:stash":
+        lua_dispatch('hl.dsp.workspace.toggle_special("stash")')
     try:
         os.remove(UI_STATE_FILE)
     except FileNotFoundError:
@@ -285,11 +431,12 @@ def cmd_restore_all():
     clients = hypr_json("clients")
     for c in clients:
         ws = c.get("workspace") or {}
-        if ws.get("name") == "special:stash":
+        if is_stashed_ws(ws):
             addr = c.get("address")
             if addr:
-                lua_dispatch(f'hl.dsp.window.move({{ workspace = {ws_id}, window = "address:{addr}", silent = true }})')
-    close_special_if_open()
+                lua_dispatch(f'hl.dsp.window.move({{ workspace = {ws_id}, follow = false, window = "address:{addr}" }})')
+    lifo_clear()
+    close_stash_and_refocus(ws_id)
     try:
         os.remove(UI_STATE_FILE)
     except FileNotFoundError:
@@ -359,6 +506,8 @@ def main():
         return cmd_controls_toggle(sys.argv[2] if len(sys.argv) >= 3 else None)
     if action == "controls-mode" and len(sys.argv) >= 3:
         return cmd_controls_mode(sys.argv[2])
+    if action == "pop-if-empty":
+        return cmd_pop_if_empty()
     print(__doc__)
     return 1
 

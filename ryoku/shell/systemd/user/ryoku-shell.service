@@ -4,7 +4,7 @@ Description=Ryoku shell daemon
 ConditionUser=!@system
 PartOf=ryoku-session.target
 After=ryoku-session.target
-ConditionEnvironment=WAYLAND_DISPLAY
+ConditionEnvironment=RYOKU_SESSION_KEY
 # a config that cannot load would otherwise restart forever; stop and let
 # doctor report it instead (start-rate keys belong in [Unit]).
 StartLimitIntervalSec=60
@@ -41,10 +41,10 @@ Restart=always
 RestartSec=2
 # Kill only the daemon on stop, not its cgroup: it reaps its own surfaces, and
 # apps the user launched from the shell must survive a shell reload.
-KillMode=process
+KillMode=control-group
 OOMPolicy=continue
 ManagedOOMPreference=avoid
-Slice=session.slice
+Slice=ryoku-session.slice
 
 [Install]
 WantedBy=ryoku-session.target

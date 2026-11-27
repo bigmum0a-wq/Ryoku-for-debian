@@ -340,7 +340,7 @@ EOF
     # Keep session-critical units in the system user-unit search path so global
     # enablement reaches accounts that do not exist when the package is installed.
     local unit
-    for unit in ryoku-bootstrap.service ryoku-session.target ryoku-shell.service \
+    for unit in ryoku-bootstrap.service ryoku-session.slice ryoku-session.target ryoku-shell.service \
       ryoku-idle.service ryoku-clamshell.service; do
       install -Dm644 "$_repo/ryoku/shell/systemd/user/$unit" \
         "$pkgdir/usr/lib/systemd/user/$unit"

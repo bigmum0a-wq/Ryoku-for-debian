@@ -3,7 +3,7 @@ Description=Ryoku idle policy daemon
 ConditionUser=!@system
 PartOf=ryoku-session.target
 After=ryoku-session.target
-ConditionEnvironment=WAYLAND_DISPLAY
+ConditionEnvironment=RYOKU_SESSION_KEY
 StartLimitIntervalSec=60
 StartLimitBurst=5
 
@@ -11,7 +11,8 @@ StartLimitBurst=5
 ExecStart=/usr/bin/ryoku-idle start
 Restart=on-failure
 RestartSec=2
-Slice=session.slice
+Slice=ryoku-session.slice
 
+KillMode=control-group
 [Install]
 WantedBy=ryoku-session.target

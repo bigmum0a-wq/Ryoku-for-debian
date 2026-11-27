@@ -8,6 +8,8 @@ After=bluetooth.service
 Wants=bluetooth.service
 PartOf=bluetooth.service
 
+PartOf=ryoku-session.target
+ConditionEnvironment=RYOKU_SESSION_KEY
 [Service]
 Type=simple
 # KeyboardDisplay is the capability BLE HID devices (gamepads, keyboards)
@@ -18,7 +20,8 @@ Type=simple
 ExecStart=/usr/bin/ryoku-bt-agent
 Restart=on-failure
 RestartSec=2
-Slice=session.slice
+Slice=ryoku-session.slice
 
+KillMode=control-group
 [Install]
 WantedBy=default.target

@@ -4,6 +4,10 @@
 # Driven by ryoku-ai-usage.timer, never enabled on its own.
 Description=Ryoku AI usage collectors
 
+PartOf=ryoku-session.target
+ConditionEnvironment=RYOKU_SESSION_KEY
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/ryoku-ai-usage
+Slice=ryoku-session.slice
+KillMode=control-group

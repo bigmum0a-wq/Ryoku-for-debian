@@ -4,9 +4,13 @@ BindsTo=ryoku-rashin.service
 After=ryoku-rashin.service
 StartLimitIntervalSec=0
 
+PartOf=ryoku-session.target
+ConditionEnvironment=RYOKU_SESSION_KEY
 [Service]
 ExecStartPre=-/bin/sh -c 'exec /usr/bin/prowl gateway down --port "$${RYOKU_PROWL_PORT:-8788}"'
 ExecStart=/bin/sh -c 'exec /usr/bin/prowl gateway serve --port "$${RYOKU_PROWL_PORT:-8788}"'
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=yes
+Slice=ryoku-session.slice
+KillMode=control-group

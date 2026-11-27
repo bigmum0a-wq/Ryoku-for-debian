@@ -2,11 +2,15 @@
 Description=Ryoku wallpaper palette event bridge
 After=graphical-session.target
 
+PartOf=ryoku-session.target
+ConditionEnvironment=RYOKU_SESSION_KEY
 [Service]
 Type=simple
 ExecStart=/usr/bin/ryoku-palette-bridge
 Restart=on-failure
 RestartSec=2
 
+Slice=ryoku-session.slice
+KillMode=control-group
 [Install]
 WantedBy=default.target

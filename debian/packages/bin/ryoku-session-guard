@@ -13,6 +13,8 @@ CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ryoku/session-guard"
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 is_ryoku_session() {
+  [ -n "${RYOKU_SESSION_KEY:-}" ] && return 0
+  [ "${RYOKU_ACTIVE:-0}" = "1" ] && return 0
   [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && return 0
   case "${XDG_CURRENT_DESKTOP:-}:${XDG_SESSION_DESKTOP:-}" in
     *Hyprland*|*hyprland*|*Ryoku*|*ryoku*) return 0 ;;
@@ -84,12 +86,16 @@ enter_ryoku() {
 }
 
 enter_other() {
-  # 1. Stop all Ryoku systemd user units & background daemons
+  # 1. Stop all Ryoku systemd user units, entire cgroup slice & background daemons
   if command -v systemctl >/dev/null 2>&1; then
     systemctl --user stop \
       ryoku-session.target \
+      ryoku-session.slice \
       ryoku-shell.service \
       ryoku-rashin.service \
+      ryoku-prowl.service \
+      ryoku-ai-usage.service \
+      ryoku-palette-bridge.service \
       ryoku-idle.service \
       ryoku-eq.service \
       ryoku-clamshell.service \
@@ -97,6 +103,16 @@ enter_other() {
       ryoku-bootstrap.service \
       xdg-desktop-portal-hyprland.service \
       mako.service \
+      2>/dev/null || true
+
+    # Clear Ryoku-scoped environment variables from systemd --user so KDE/GNOME/XFCE
+    # never inherit qt6ct, disabled Qt decorations, or Ryoku's Polkit agent flag.
+    systemctl --user unset-environment \
+      RYOKU_SESSION_KEY RYOKU_ACTIVE \
+      QT_QPA_PLATFORMTHEME QT_WAYLAND_DISABLE_WINDOWDECORATION \
+      GSK_RENDERER GDK_BACKEND QT_QPA_PLATFORM \
+      QT_AUTO_SCREEN_SCALE_FACTOR ELECTRON_OZONE_PLATFORM_HINT \
+      RYOKU_POLKIT_AGENT XCURSOR_THEME XCURSOR_SIZE \
       2>/dev/null || true
   fi
 

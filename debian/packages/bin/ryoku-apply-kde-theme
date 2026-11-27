@@ -345,7 +345,19 @@ def apply_to_kde(has_kvantum: bool = False):
 
 # ── Main ───────────────────────────────────────────────────────────────────
 
+def is_ryoku_session() -> bool:
+    if os.environ.get("RYOKU_SESSION_KEY") or os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        return True
+    desktop = (os.environ.get("XDG_CURRENT_DESKTOP", "") + ":" + os.environ.get("XDG_SESSION_DESKTOP", "")).lower()
+    return any(tok in desktop for tok in ("hyprland", "ryoku", "niri", "wayfire"))
+
+
 if __name__ == "__main__":
+    if APPLY and not is_ryoku_session():
+        print("[ryoku-kde] Hors session Ryoku — refus d'appliquer les styles sur KDE/tiers.", file=sys.stderr)
+        sys.exit(0)
+    if APPLY and shutil.which("ryoku-session-guard"):
+        subprocess.run(["ryoku-session-guard", "enter-ryoku"], capture_output=True)
     build_colors_file()
     build_laf_package()
     has_kv = build_kvantum_theme()

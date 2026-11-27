@@ -6,7 +6,7 @@ Description=Ryogami wallpaper daemon
 ConditionUser=!@system
 PartOf=ryoku-session.target
 After=ryoku-session.target
-ConditionEnvironment=WAYLAND_DISPLAY
+ConditionEnvironment=RYOKU_SESSION_KEY
 # a config that cannot load would otherwise restart forever; stop and let
 # doctor report it instead (start-rate keys belong in [Unit]).
 StartLimitIntervalSec=60
@@ -18,8 +18,8 @@ Restart=always
 RestartSec=2
 # Kill only the daemon on stop, not its cgroup: it reaps its own render
 # surfaces and the ryoku-depth helper it shells out to must outlive a reload.
-KillMode=process
-Slice=session.slice
+KillMode=control-group
+Slice=ryoku-session.slice
 # quickshell links jemalloc, so the glibc arena cap does nothing here. The
 # picker's tree is built and torn down on every open; without a decay schedule
 # the freed pages stay mapped (measured: ~128 MB stranded after a single

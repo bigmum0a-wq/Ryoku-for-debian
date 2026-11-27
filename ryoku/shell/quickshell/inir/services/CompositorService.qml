@@ -95,7 +95,7 @@ Singleton {
         const out = [];
         for (let i = 0; i < list.length; i++) {
             const w = list[i];
-            if (w.special)
+            if (w.special || w.name === "ryoku-stash")
                 continue;
             out.push({
                 id: w.id,
@@ -282,7 +282,19 @@ Singleton {
     }
 
     function focusWindow(id) {
-        Wm.focusWindow(String(id));
+        const sid = String(id);
+        const win = (Wm.windows ?? []).find(w => String(w.id ?? "") === sid);
+        if (win) {
+            const ws = (Wm.workspaces ?? []).find(x => String(x.id ?? "") === String(win.workspace ?? ""));
+            if (ws && (ws.name === "ryoku-stash" || ws.name === "special:stash")) {
+                Quickshell.execDetached([
+                    "bash", "-c",
+                    "BIN=$([ -x \"$HOME/.local/bin/ryoku-winstash\" ] && echo \"$HOME/.local/bin/ryoku-winstash\" || echo ryoku-winstash); exec \"$BIN\" focus '" + sid.replace(/'/g, "'\\''") + "'"
+                ]);
+                return;
+            }
+        }
+        Wm.focusWindow(sid);
     }
 
     function closeAllWindows() {

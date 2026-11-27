@@ -160,6 +160,66 @@ done
 
 # SDDM discards a Wayland session's stdout but sends stderr to the configured
 # session log. Keep compositor diagnostics together there.
+is_ryoku_session_cmd() {
+  case "${*:-}:${XDG_CURRENT_DESKTOP:-}:${XDG_SESSION_DESKTOP:-}" in
+    *Hyprland*|*hyprland*|*niri*|*wayfire*|*ryoku*|*Ryoku*) return 0 ;;
+  esac
+  return 1
+}
+
+RYOKU_MANAGED_SESSION=0
+if is_ryoku_session_cmd "$@"; then
+  RYOKU_MANAGED_SESSION=1
+  if [[ -z ${RYOKU_SESSION_KEY:-} ]]; then
+    if [[ -r /proc/sys/kernel/random/uuid ]]; then
+      RYOKU_SESSION_KEY=$(cat /proc/sys/kernel/random/uuid)
+    else
+      RYOKU_SESSION_KEY="ryoku-$$-$(date +%s)"
+    fi
+  fi
+  export RYOKU_SESSION_KEY
+  export RYOKU_ACTIVE=1
+  export XCURSOR_THEME="${XCURSOR_THEME:-Bibata-Modern-Ice}"
+  export XCURSOR_SIZE="${XCURSOR_SIZE:-24}"
+  export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-qt6ct}"
+  export GDK_BACKEND="${GDK_BACKEND:-wayland,x11,*}"
+  export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-wayland;xcb}"
+  export QT_AUTO_SCREEN_SCALE_FACTOR="${QT_AUTO_SCREEN_SCALE_FACTOR:-1}"
+  export QT_WAYLAND_DISABLE_WINDOWDECORATION="${QT_WAYLAND_DISABLE_WINDOWDECORATION:-1}"
+  export ELECTRON_OZONE_PLATFORM_HINT="${ELECTRON_OZONE_PLATFORM_HINT:-auto}"
+  export GSK_RENDERER="${GSK_RENDERER:-gl}"
+  export RYOKU_POLKIT_AGENT="${RYOKU_POLKIT_AGENT:-1}"
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user import-environment \
+      RYOKU_SESSION_KEY RYOKU_ACTIVE XCURSOR_THEME XCURSOR_SIZE \
+      QT_QPA_PLATFORMTHEME GDK_BACKEND QT_QPA_PLATFORM \
+      QT_AUTO_SCREEN_SCALE_FACTOR QT_WAYLAND_DISABLE_WINDOWDECORATION \
+      ELECTRON_OZONE_PLATFORM_HINT GSK_RENDERER RYOKU_POLKIT_AGENT \
+      2>/dev/null || true
+  fi
+else
+  unset RYOKU_SESSION_KEY RYOKU_ACTIVE 2>/dev/null || true
+  if command -v ryoku-session-guard >/dev/null 2>&1; then
+    ryoku-session-guard enter-other >/dev/null 2>&1 || true
+  fi
+fi
+
+cleanup_ryoku_session() {
+  (( RYOKU_MANAGED_SESSION == 1 )) || return 0
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user stop ryoku-session.target ryoku-session.slice 2>/dev/null || true
+    systemctl --user unset-environment \
+      RYOKU_SESSION_KEY RYOKU_ACTIVE XCURSOR_THEME XCURSOR_SIZE \
+      QT_QPA_PLATFORMTHEME GDK_BACKEND QT_QPA_PLATFORM \
+      QT_AUTO_SCREEN_SCALE_FACTOR QT_WAYLAND_DISABLE_WINDOWDECORATION \
+      ELECTRON_OZONE_PLATFORM_HINT GSK_RENDERER RYOKU_POLKIT_AGENT \
+      2>/dev/null || true
+  fi
+  if command -v ryoku-session-guard >/dev/null 2>&1; then
+    ryoku-session-guard enter-other >/dev/null 2>&1 || true
+  fi
+}
+
 default="${RYOKU_WAYLAND_SESSION_DEFAULT:-/usr/share/sddm/scripts/wayland-session}"
 child_pid=""
 forward_signal() {
@@ -184,6 +244,7 @@ while :; do
   break
 done
 trap - TERM INT HUP
+cleanup_ryoku_session
 
 (( status == 0 )) && exit 0
 

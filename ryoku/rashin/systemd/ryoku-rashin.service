@@ -7,11 +7,15 @@ Wants=ryoku-prowl.service
 # the daemon self-heals instead of turning off and staying off.
 StartLimitIntervalSec=0
 
+PartOf=ryoku-session.target
+ConditionEnvironment=RYOKU_SESSION_KEY
 [Service]
 ExecStart=/usr/bin/ryoku-rashin serve --if-enabled
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=yes
 
+Slice=ryoku-session.slice
+KillMode=control-group
 [Install]
 WantedBy=default.target

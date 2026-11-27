@@ -8,9 +8,12 @@ After=pipewire.service
 PartOf=pipewire.service
 ConditionPathExists=%t/ryoku/eq/filter-chain.conf
 
+PartOf=ryoku-session.target
+ConditionEnvironment=RYOKU_SESSION_KEY
 [Service]
 Type=simple
 ExecStart=/usr/bin/pipewire -c %t/ryoku/eq/filter-chain.conf
 Restart=on-failure
 RestartSec=2
-Slice=session.slice
+Slice=ryoku-session.slice
+KillMode=control-group

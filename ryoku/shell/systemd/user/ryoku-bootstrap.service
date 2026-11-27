@@ -18,6 +18,8 @@ ConditionPathExists=|!%h/.config/quickshell/shell/shell.qml
 
 Before=graphical-session.target
 
+PartOf=ryoku-session.target
+ConditionEnvironment=RYOKU_SESSION_KEY
 [Service]
 Type=oneshot
 RemainAfterExit=yes
@@ -27,5 +29,7 @@ ExecStart=/usr/bin/ryoku materialize
 # racing a login) is harmless rather than a reason to refuse to start.
 TimeoutStartSec=120
 
+Slice=ryoku-session.slice
+KillMode=control-group
 [Install]
 WantedBy=default.target
