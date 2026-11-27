@@ -218,6 +218,24 @@ NotShowIn=Hyprland;
 NoDisplay=true
 X-GNOME-Autostart-Phase=Initialization
 EOF
+mkdir -p "$DESKTOP_DIR/etc/xdg/plasma-workspace/env"
+cat << 'EOF' > "$DESKTOP_DIR/etc/xdg/plasma-workspace/env/00-ryoku-clean.sh"
+#!/bin/sh
+# Sourced by startplasma-wayland / startplasma-x11 BEFORE kwin_wayland and plasmashell
+# start, ensuring Ryoku/Hyprland variables never leak into KDE Plasma.
+unset RYOKU_SESSION_KEY RYOKU_ACTIVE RYOKU_WM RYOKU_POLKIT_AGENT \
+  QT_QPA_PLATFORMTHEME QT_WAYLAND_DISABLE_WINDOWDECORATION \
+  QT_QPA_PLATFORM QT_AUTO_SCREEN_SCALE_FACTOR QT_WAYLAND_RECONNECT \
+  GSK_RENDERER GDK_BACKEND GTK_THEME GTK_DECORATION_LAYOUT \
+  ELECTRON_OZONE_PLATFORM_HINT \
+  XCURSOR_THEME XCURSOR_SIZE HYPRCURSOR_THEME HYPRCURSOR_SIZE \
+  HYPRLAND_CMD HYPRLAND_NO_SD_NOTIFY
+
+if [ -x /usr/bin/ryoku-session-guard ]; then
+  /usr/bin/ryoku-session-guard enter-other >/dev/null 2>&1 || true
+fi
+EOF
+chmod +x "$DESKTOP_DIR/etc/xdg/plasma-workspace/env/00-ryoku-clean.sh"
 find "$DESKTOP_DIR/usr/share/ryoku" \( -name "README.md" -o -name "__pycache__" -o -name "*.pyc" \) -exec rm -rf {} + 2>/dev/null || true
 package_deb "ryoku-desktop" "$ARCH" \
   "ryoku-cli (>= $PKGVER), ryoku-shell (>= $PKGVER), ryoku-palette-bridge (>= $PKGVER), ryoku-blobs (>= $PKGVER), ryoku-desktop-hyprland (>= $PKGVER), qml6-module-qtquick3d, wireplumber, pipewire, grim, slurp, wl-clipboard, tesseract-ocr, playerctl, cava, hyprpicker, hyprsunset, hypridle, ffmpeg, mpv, jq, socat, python3, gnome-keyring, libsecret-1-0, xdg-desktop-portal-gtk, xdg-desktop-portal-hyprland, x11-xserver-utils, libglib2.0-bin, dbus-user-session, qt6ct, papirus-icon-theme" \
