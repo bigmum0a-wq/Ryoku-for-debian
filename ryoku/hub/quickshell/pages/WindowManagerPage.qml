@@ -175,6 +175,35 @@ Item {
     // applies a layout to every workspace of one output through the seam; a
     // failure is reported and the page re-reads the real state
     property string tilingError: ""
+    property bool titlebarButtonsEnabled: true
+
+    Process {
+        id: titlebarStatusProc
+        command: ["ryoku-hyprbars-init", "--status"]
+        stdout: StdioCollector { id: titlebarStatusOut }
+        onExited: (code) => {
+            if (code === 0) {
+                var val = titlebarStatusOut.text.trim();
+                if (val === "false") pg.titlebarButtonsEnabled = false;
+                else if (val === "true") pg.titlebarButtonsEnabled = true;
+            }
+        }
+        Component.onCompleted: running = true
+    }
+
+    Process {
+        id: titlebarSetProc
+        onExited: (code) => {
+            if (code === 0) titlebarStatusProc.running = true;
+        }
+    }
+
+    function setTitlebarButtons(on) {
+        pg.titlebarButtonsEnabled = on;
+        titlebarSetProc.command = ["ryoku-hyprbars-init", "--set", on ? "on" : "off"];
+        titlebarSetProc.running = true;
+    }
+
     function setOutputLayout(output, layout) {
         tilingSet.command = ["ryoku-output-tiling", "set", output, layout];
         tilingSet.running = true;
@@ -188,8 +217,9 @@ Item {
         id: linkRowC
         Column {
             width: parent ? parent.width : implicitWidth
-            spacing: Tokens.s2
+            spacing: Tokens.s3
             OutputTabs {
+                visible: pg.perOutput
                 outputs: pg.outputNames
                 linked: pg.linked
                 selected: pg.activeOutput
@@ -200,13 +230,29 @@ Item {
                 onChose: (o) => pg.selectedOutput = o
             }
             Text {
-                visible: pg.tilingError !== ""
+                visible: pg.perOutput && pg.tilingError !== ""
                 width: parent.width
                 wrapMode: Text.WordWrap
                 text: pg.tilingError
                 color: Tokens.ink
                 font.family: Tokens.ui
                 font.pixelSize: Tokens.fSmall
+            }
+            SettingCard {
+                width: parent.width
+                title: I18n.tr("WINDOW TITLEBARS")
+                SettingRow {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    label: I18n.tr("Apple-style window buttons")
+                    desc: I18n.tr("Show close (×), stash (−) and resize (+) buttons in every window frame. Turning off removes the entire titlebar and its space. Super+H (stash) and Super+Q (close) are always available via keyboard regardless.")
+                    Sw {
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        on: pg.titlebarButtonsEnabled
+                        onToggled: (v) => pg.setTitlebarButtons(v)
+                    }
+                }
             }
         }
     }
@@ -237,7 +283,7 @@ Item {
         // are about the compositor rather than about any group of settings, so
         // they get a tab of their own instead of repeating above every tab.
         tailTabs: pg.scopedView ? [] : [pg.switchTab]
-        headerExtra: pg.perOutput ? linkRowC : null
+        headerExtra: linkRowC
 
         Column {
             width: parent.width

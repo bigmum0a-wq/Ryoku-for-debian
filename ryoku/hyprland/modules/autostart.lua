@@ -85,3 +85,10 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("(systemd-run --user --scope --slice=ryoku-session.slice --unit=ryoku-livewall-eco flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco || flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco) >/dev/null 2>&1 &")
     hl.exec_cmd("command -v ryoku-dock-sync >/dev/null 2>&1 && ryoku-dock-sync >/dev/null 2>&1 &")
 end)
+
+-- hyprbars clears its buttons and resets plugin options on every config reload.
+-- Re-run ryoku-hyprbars-init after every reload so the Apple traffic-light
+-- titlebars and hyprbars:no_bar rule survive hyprctl reload / monitor hotplug.
+hl.on("config.reloaded", function()
+    hl.exec_cmd("command -v ryoku-hyprbars-init >/dev/null 2>&1 && ryoku-hyprbars-init >/dev/null 2>&1 &")
+end)

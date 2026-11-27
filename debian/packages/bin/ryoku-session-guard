@@ -68,8 +68,108 @@ enter_ryoku() {
     xdg-desktop-portal-kde xdg-desktop-portal-gnome \
     2>/dev/null || true
 
-  # 2. Do not mutate shared ~/.config/kdeglobals, ~/.config/gtk-3.0, or global dconf.
-  # Ryoku scopes its Qt/GTK styling strictly via session environment variables and qt6ct.
+  # 2. Suppress GTK3/GTK4 CSD titlebar buttons while inside Ryoku so hyprbars
+  #    is the sole titlebar, while preserving the pre-Ryoku settings.ini for KDE.
+  for pair in "gtk-3.0/settings.ini:gtk3-settings.ini" "gtk-4.0/settings.ini:gtk4-settings.ini"; do
+    local rel="${pair%%:*}"
+    local bname="${pair##*:}"
+    local f="$CFG_DIR/$rel"
+    if [ -f "$f" ] && ! grep -q '^gtk-decoration-layout=:$' "$f" 2>/dev/null; then
+      mkdir -p "$CACHE_DIR"
+      cp -a "$f" "$CACHE_DIR/$bname.pre-ryoku" 2>/dev/null || true
+      if grep -q '^gtk-decoration-layout=' "$f" 2>/dev/null; then
+        sed -i 's/^gtk-decoration-layout=.*/gtk-decoration-layout=:/' "$f" 2>/dev/null || true
+      elif grep -q '^\[Settings\]' "$f" 2>/dev/null; then
+        sed -i '/^\[Settings\]/a gtk-decoration-layout=:' "$f" 2>/dev/null || true
+      fi
+    fi
+  done
+
+  # 2b. Set GNOME/XDG Portal button-layout to ":" so GTK4/libadwaita, Chromium,
+  #     Electron (native frame), Firefox, and Flatpak apps receive empty button
+  #     layouts from org.freedesktop.portal.Settings across the whole system.
+  if command -v gsettings >/dev/null 2>&1; then
+    local cur_layout
+    cur_layout="$(gsettings get org.gnome.desktop.wm.preferences button-layout 2>/dev/null || true)"
+    if [ -n "$cur_layout" ] && [ "$cur_layout" != "':'" ]; then
+      mkdir -p "$CACHE_DIR"
+      printf '%s\n' "$cur_layout" > "$CACHE_DIR/gnome-button-layout.pre-ryoku" 2>/dev/null || true
+    fi
+    gsettings set org.gnome.desktop.wm.preferences button-layout ':' 2>/dev/null || true
+  fi
+
+  # 3. Write a dedicated CSD-strip CSS file and @import it from gtk.css.
+  #    Using a separate file (ryoku-csd-strip.css) is robust against tools like
+  #    matugen that regenerate gtk.css and would wipe an injected block. The
+  #    @import line is idempotent and survives regeneration as long as this guard
+  #    re-runs on login (which it does via enter-ryoku in ryoku-session.target).
+  #
+  #    Coverage map:
+  #      headerbar windowcontrols          → GTK3 CSD (Nautilus, Gedit, …)
+  #      headerbar button.titlebutton      → GTK3 close/min/max buttons
+  #      .titlebar windowcontrols          → libadwaita GTK4 controls bar
+  #      .titlebar button.titlebutton      → GTK4 individual buttons
+  #      .csd headerbar .title-buttons     → libadwaita 1.6+ unified strip
+  #      decoration                        → GTK3 shadow frame that holds CSD
+  #      window.csd > decoration           → prevents ghost-click area lingering
+  local csd_strip_css="$CFG_DIR/ryoku/ryoku-csd-strip.css"
+  mkdir -p "$(dirname "$csd_strip_css")"
+  cat > "$csd_strip_css" << 'CSD_CSS_EOF'
+/* ryoku-csd-strip.css — permanently suppress app-drawn CSD titlebar buttons.
+   Ryoku supplies its own Apple traffic-light buttons via hyprbars; native CSD
+   buttons must never appear alongside them. Do NOT remove this file while in a
+   Ryoku session. It is regenerated on every login by ryoku-session-guard. */
+
+/* GTK3 — classic Adwaita / adw-gtk3 CSD controls */
+headerbar windowcontrols,
+headerbar button.titlebutton {
+  opacity: 0;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* GTK4 / libadwaita — AdwHeaderBar window controls */
+.titlebar windowcontrols,
+.titlebar button.titlebutton,
+.csd headerbar .title-buttons,
+.csd .titlebar .title-buttons {
+  opacity: 0;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Remove the shadow frame GTK3 reserves for the CSD drop-shadow decoration;
+   without this a transparent click-trap remains at the top of the window. */
+window.csd > decoration {
+  margin: 0;
+  padding: 0;
+  box-shadow: none;
+}
+CSD_CSS_EOF
+
+  # Inject @import into gtk-3.0/gtk.css and gtk-4.0/gtk.css.
+  # Only the @import line is added — the actual rules live in the separate file
+  # so a matugen regeneration just loses the import line, not the rules, and
+  # this guard re-adds it on next login.
+  local import_line="@import url("$csd_strip_css");"
+  for css in "$CFG_DIR/gtk-3.0/gtk.css" "$CFG_DIR/gtk-4.0/gtk.css"; do
+    mkdir -p "$(dirname "$css")"
+    if [ ! -f "$css" ]; then
+      printf '%s
+' "$import_line" > "$css"
+    elif ! grep -qF "ryoku/ryoku-csd-strip.css" "$css" 2>/dev/null; then
+      # Prepend so Ryoku's rules have highest specificity priority.
+      local tmp_css
+      tmp_css="$(mktemp)"
+      { printf '%s
+' "$import_line"; cat "$css"; } > "$tmp_css"
+      mv "$tmp_css" "$css"
+    fi
+  done
 }
 
 enter_other() {
@@ -112,18 +212,40 @@ enter_other() {
     2>/dev/null || true
   pkill -u "${USER:-$(id -un)}" -f "quickshell.*winstash" 2>/dev/null || true
 
-  # 2. Clean up any legacy gtk-decoration-layout=: left by older Ryoku versions without overwriting gsettings
+  # 2. Restore pre-Ryoku GTK settings.ini if Ryoku set gtk-decoration-layout=:
+  restore_file_if_ryoku "$CFG_DIR/gtk-3.0/settings.ini" "gtk3-settings.ini" "^gtk-decoration-layout=:$"
+  restore_file_if_ryoku "$CFG_DIR/gtk-4.0/settings.ini" "gtk4-settings.ini" "^gtk-decoration-layout=:$"
   for f in "$CFG_DIR/gtk-3.0/settings.ini" "$CFG_DIR/gtk-4.0/settings.ini"; do
     if [ -f "$f" ]; then
       sed -i '/^gtk-decoration-layout=:/d' "$f" 2>/dev/null || true
     fi
   done
 
+  # 2b. Restore pre-Ryoku GNOME/XDG Portal button-layout if saved
+  if command -v gsettings >/dev/null 2>&1 && [ -f "$CACHE_DIR/gnome-button-layout.pre-ryoku" ]; then
+    local prev_layout
+    prev_layout="$(head -n1 "$CACHE_DIR/gnome-button-layout.pre-ryoku" 2>/dev/null | tr -d "'")"
+    if [ -n "$prev_layout" ]; then
+      gsettings set org.gnome.desktop.wm.preferences button-layout "$prev_layout" 2>/dev/null || true
+    fi
+    rm -f "$CACHE_DIR/gnome-button-layout.pre-ryoku" 2>/dev/null || true
+  fi
+
   # 3. Restore pre-Ryoku KDE/Kvantum/GTK CSS if RyokuDynamic was injected into shared files
   restore_file_if_ryoku "$CFG_DIR/kdeglobals" "kdeglobals" "RyokuDynamic"
   restore_file_if_ryoku "$CFG_DIR/Kvantum/kvantum.kvconfig" "kvantum.kvconfig" "RyokuDynamic"
   restore_file_if_ryoku "$CFG_DIR/gtk-3.0/gtk.css" "gtk3.css" "colors.css"
   restore_file_if_ryoku "$CFG_DIR/gtk-4.0/gtk.css" "gtk4.css" "colors.css"
+  # Remove the Ryoku @import line and the dedicated CSD-strip file so KDE/GNOME
+  # regain their own native window decoration controls.
+  local csd_strip_css="$CFG_DIR/ryoku/ryoku-csd-strip.css"
+  rm -f "$csd_strip_css" 2>/dev/null || true
+  for css in "$CFG_DIR/gtk-3.0/gtk.css" "$CFG_DIR/gtk-4.0/gtk.css"; do
+    if [ -f "$css" ] && grep -qF "ryoku/ryoku-csd-strip.css" "$css" 2>/dev/null; then
+      sed -i '/ryoku\/ryoku-csd-strip\.css/d' "$css" 2>/dev/null || true
+    fi
+  done
+
 
   # Fallback if no backup existed and kdeglobals/kvantum still points to RyokuDynamic
   if [ -f "$CFG_DIR/kdeglobals" ] && grep -q "RyokuDynamic" "$CFG_DIR/kdeglobals" 2>/dev/null; then

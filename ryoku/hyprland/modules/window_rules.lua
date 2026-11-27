@@ -68,26 +68,6 @@ hl.window_rule({
     suppress_event = "maximize",
 })
 
--- ── hyprbars: suppress bar on apps with server-side titlebars ─────────────
--- Apps that draw their own NATIVE server-side titlebar (not CSD) must NOT get a
--- second bar from hyprbars. These are apps that natively speak the xdg-toplevel
--- decoration protocol as server-side, or XWayland apps with WM-managed borders.
--- GTK / Qt CSD apps are handled already via GTK_DECORATION_LAYOUT=: and
--- QT_WAYLAND_DISABLE_WINDOWDECORATION=1 in env.lua, so they already show no
--- client-side buttons — hyprbars is their sole bar.
---
--- Apps listed here: VS Code (uses its own Electron/native title area), GIMP
--- (custom single-window mode toolbar bar), VLC (native platform titlebar on
--- XWayland), Chromium family in app-window mode, Steam Big Picture.
--- Add any app whose top of window already carries a full native title area.
-hl.window_rule({
-    name  = "hyprbars-no-bar-native-titlebar",
-    match = {
-        class = "^(code|code-oss|code%-url%-handler|vscodium|gimp.*|gimp|vlc|steam|gamescope)$",
-    },
-    effects = { ["hyprbars:no_bar"] = true },
-})
-
 hl.window_rule({
     name  = "fix-xwayland-drags",
     match = {

@@ -4,7 +4,47 @@
 #   Red    (×) : Close active window
 #   Yellow (−) : Stash window to bottom-right dock (ryoku-winstash hide)
 #   Green  (+) : 3-state resize cycle (max -> medium -> compact -> tiled via ryoku-winstash maximize)
+#
+# Subcommands:
+#   --status         Print "true" or "false" according to persisted state (default: true)
+#   --set on|off     Persist enabled state and apply immediately
+#   --reload-buttons  Reload Hyprland config to clear and re-register buttons safely
+#                     (hyprbars 1.0 has no clear_buttons; a reload is the only safe reset)
 set -u
+
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/ryoku"
+STATE_FILE="${STATE_DIR}/hyprbars.enabled"
+
+read_enabled_state() {
+  if [ -f "$STATE_FILE" ]; then
+    case "$(tr -d '[:space:]' < "$STATE_FILE" 2>/dev/null)" in
+      false|0|off|no) echo "false"; return ;;
+    esac
+  fi
+  echo "true"
+}
+
+case "${1:-}" in
+  --status)
+    read_enabled_state
+    exit 0
+    ;;
+  --set)
+    mkdir -p "$STATE_DIR"
+    case "${2:-on}" in
+      off|false|0|no) echo "false" > "$STATE_FILE" ;;
+      *)              echo "true"  > "$STATE_FILE" ;;
+    esac
+    ;;
+  --reload-buttons)
+    # hyprbars 1.0 has no clear_buttons API — a full config reload is the only
+    # safe way to clear accumulated buttons and re-register exactly 3.
+    hyprctl reload > /dev/null 2>&1 || true
+    exit 0
+    ;;
+esac
+
+ENABLED="$(read_enabled_state)"
 
 BAR_SO=""
 for candidate in \
@@ -19,24 +59,38 @@ done
 [ -n "$BAR_SO" ] || exit 0
 command -v hyprctl >/dev/null 2>&1 || exit 0
 
+# Serialize concurrent invocations (e.g. ready + config.reloaded)
+LOCK_FILE="/tmp/ryoku-hyprbars-init-${HYPRLAND_INSTANCE_SIGNATURE:-default}.lock"
+exec 9>"$LOCK_FILE"
+flock -w 5 9 || exit 0
+
 WINSTASH_BIN="ryoku-winstash"
 if [ -x "${HOME}/.local/bin/ryoku-winstash" ]; then
   WINSTASH_BIN="${HOME}/.local/bin/ryoku-winstash"
 fi
 
-ALREADY_LOADED=0
-if hyprctl plugins list 2>/dev/null | grep -q "Plugin hyprbars"; then
-  ALREADY_LOADED=1
-else
+# Load the plugin if not already loaded (hyprpm may have pre-loaded it).
+if ! hyprctl plugins list 2>/dev/null | grep -q "Plugin hyprbars"; then
   hyprctl plugin load "$BAR_SO" >/dev/null 2>&1 || exit 0
 fi
 
+# Detect whether plugin options were reset (fresh load or after hyprctl reload).
+BAR_ALREADY_SET=0
+if hyprctl getoption plugin:hyprbars:bar_height 2>/dev/null | grep -q "set: true"; then
+  BAR_ALREADY_SET=1
+fi
+
+# Apply bar style and persisted enabled state.
+# When ENABLED=true  -> show Apple traffic-light buttons + reserve bar space.
+# When ENABLED=false -> hide the entire bar AND its top-of-window space.
+# Super+H / Super+Q keybinds in binds.lua are ALWAYS active regardless.
+BAR_PART="${ENABLED}"
 hyprctl eval "
 hl.config({
     plugin = {
         hyprbars = {
-            enabled = true,
-            bar_height = 28,
+            enabled = ${ENABLED},
+            bar_height = 30,
             bar_color = \"rgba(181825e6)\",
             bar_blur = true,
             [\"col.text\"] = \"rgba(cdd6f4d9)\",
@@ -45,9 +99,9 @@ hl.config({
             bar_text_font = \"Sans\",
             bar_text_align = \"center\",
             bar_buttons_alignment = \"left\",
-            bar_padding = 12,
-            bar_button_padding = 8,
-            bar_part_of_window = true,
+            bar_padding = 14,
+            bar_button_padding = 14,
+            bar_part_of_window = ${BAR_PART},
             bar_precedence_over_border = false,
             icon_on_hover = true,
             inactive_button_color = \"rgb(585b70)\",
@@ -57,8 +111,11 @@ hl.config({
 })
 " >/dev/null 2>&1 || true
 
-# Register the 3 Apple traffic-light buttons once per plugin load
-if [ "$ALREADY_LOADED" = "0" ] || [ "${1:-}" = "--reset-buttons" ]; then
+# Register the 3 Apple traffic-light buttons when freshly loaded or after a reload.
+# Only add buttons when hyprbars options were just reset (fresh load / after reload).
+# NEVER call add_button when BAR_ALREADY_SET=1 — hyprbars has no clear_buttons in v1.0,
+# so calling add_button on an already-configured plugin duplicates the buttons.
+if [ "$BAR_ALREADY_SET" = "0" ]; then
   hyprctl eval "
   hl.plugin.hyprbars.add_button({
       bg_color = \"rgb(ff5f57)\",
@@ -82,4 +139,11 @@ if [ "$ALREADY_LOADED" = "0" ] || [ "${1:-}" = "--reset-buttons" ]; then
       action = \"${WINSTASH_BIN} maximize\",
   })
   " >/dev/null 2>&1 || true
+fi
+
+# When disabling, trigger a reload so ALL existing windows immediately lose the
+# reserved top-of-window space.  The config.reloaded hook re-runs this script
+# (which then sets enabled=false again); flock above prevents double-execution.
+if [ "${ENABLED}" = "false" ] && [ "${1:-}" = "--set" ]; then
+  hyprctl reload > /dev/null 2>&1 || true
 fi
