@@ -1,97 +1,97 @@
 Package: ryoku-archive-keyring
-Version: 1.2.3-1
+Version: 1.2.3-2
 Architecture: all
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: gpg
-Filename: pool/main/r/ryoku/ryoku-archive-keyring_1.2.3-1_all.deb
-Size: 1288
-MD5sum: 598fd7a20b5a28cec20645d934fe93f3
-SHA1: f54749c26052508d9a5cd1c0896b0b9bbcc712ff
-SHA256: 24ac975c579b534894fe20f2d7024c16018e1d8d6ddb70bb3e95e1641d30b528
+Filename: pool/main/r/ryoku/ryoku-archive-keyring_1.2.3-2_all.deb
+Size: 1284
+MD5sum: 6a1d8a36f1b7d348714a9b65bf2f476b
+SHA1: c4ca85c348d87e734618fc9d07db12e6b87bed8d
+SHA256: 46a19f1b6832327c513effffce199ebfcada747bbd6afe53b41a9df335d9a85c
 Section: x11
 Priority: optional
 Description: GnuPG archive key and apt sources list for Ryoku Debian repository
 
 Package: ryoku-blobs
-Version: 1.2.3-1
+Version: 1.2.3-2
 Architecture: amd64
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: quickshell
-Filename: pool/main/r/ryoku/ryoku-blobs_1.2.3-1_amd64.deb
-Size: 3544
-MD5sum: 469ce0d1bd37eef5491b5affe8fc535d
-SHA1: a4c1aa533d90c4ea6ec3e0d80692df7a539a5a88
-SHA256: 0c31d4db4a278ddd1ddee0065f62d26dc8bbeac5c02f7c4524539bef8394ef04
+Filename: pool/main/r/ryoku/ryoku-blobs_1.2.3-2_amd64.deb
+Size: 3540
+MD5sum: c91040a75aa4df86db4579fd7b8b48c7
+SHA1: aa875e758fb87971c12dd65dd7cdb09efa280de5
+SHA256: f7fbbc51c1a30a450e7d8581b9ad40a782a517f05af34803499c1116219e58bb
 Section: x11
 Priority: optional
 Description: Ryoku Blobs and Spatial3D QML components
 
 Package: ryoku-cli
-Version: 1.2.3-1
+Version: 1.2.3-2
 Architecture: amd64
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: apt, dpkg, systemd
-Filename: pool/main/r/ryoku/ryoku-cli_1.2.3-1_amd64.deb
-Size: 4735806
-MD5sum: 9e5358d9080ee648787ea10c53e0374a
-SHA1: c32677905ae885298b3c9993b544eab9f7d34b0a
-SHA256: 89b62603c678d5b488eaafb3649e0cde24796254cb937288b5119b02084579f6
+Filename: pool/main/r/ryoku/ryoku-cli_1.2.3-2_amd64.deb
+Size: 4735614
+MD5sum: 7f741b6a1a551c0e1b82158e5416862b
+SHA1: 2fbbc81938fcdc3348aedc9925e57ddd383bd404
+SHA256: c9212c81664cce360fd509ae5d9f5ddedc9d4f62018dd40f9f7a266a851ac539
 Section: x11
 Priority: optional
 Description: Ryoku Desktop Control Plane and Host Abstraction
 
 Package: ryoku-desktop
-Version: 1.2.3-1
+Version: 1.2.3-2
 Architecture: amd64
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
-Depends: ryoku-cli (>= 1.2.3-1), ryoku-shell (>= 1.2.3-1), ryoku-palette-bridge (>= 1.2.3-1), ryoku-blobs (>= 1.2.3-1), ryoku-desktop-hyprland (>= 1.2.3-1), qml6-module-qtquick3d, wireplumber, pipewire, grim, slurp, wl-clipboard, tesseract-ocr, playerctl, cava, hyprpicker, hyprsunset, hypridle, ffmpeg, mpv, jq, socat, gnome-keyring, libsecret-1-0, xdg-desktop-portal-gtk, qt6ct, papirus-icon-theme
-Filename: pool/main/r/ryoku/ryoku-desktop_1.2.3-1_amd64.deb
-Size: 52255890
-MD5sum: fa757bad2b0e043730898f02f14ba9a9
-SHA1: 2e24c0a9810d909c5340b3b29a31bd7abe8c0f4d
-SHA256: 531853c08e94c2fe9489c86f8631fc1fda58233320708f57109917ba125f1cd6
+Depends: ryoku-cli (>= 1.2.3-2), ryoku-shell (>= 1.2.3-2), ryoku-palette-bridge (>= 1.2.3-2), ryoku-blobs (>= 1.2.3-2), ryoku-desktop-hyprland (>= 1.2.3-2), qml6-module-qtquick3d, wireplumber, pipewire, grim, slurp, wl-clipboard, tesseract-ocr, playerctl, cava, hyprpicker, hyprsunset, hypridle, ffmpeg, mpv, jq, socat, python3, gnome-keyring, libsecret-1-0, xdg-desktop-portal-gtk, xdg-desktop-portal-hyprland, x11-xserver-utils, libglib2.0-bin, dbus-user-session, qt6ct, papirus-icon-theme
+Filename: pool/main/r/ryoku/ryoku-desktop_1.2.3-2_amd64.deb
+Size: 52257540
+MD5sum: eaeb2390268fe82b97568ee5c8a95bc7
+SHA1: 273ad4019086fff6b3d4da5ffb3b0c2d82e090c2
+SHA256: 1dbdbbab64981816bb77f1ceaa66fcff2a23b770c526abe1ecf897e3e73b28fb
 Section: x11
 Priority: optional
 Description: Ryoku Desktop Environment (metapackage and system configuration)
 
 Package: ryoku-desktop-hyprland
-Version: 1.2.3-1
+Version: 1.2.3-2
 Architecture: amd64
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: hyprland, ryoku-shell
-Filename: pool/main/r/ryoku/ryoku-desktop-hyprland_1.2.3-1_amd64.deb
-Size: 1563188
-MD5sum: c642ce563781d6cf5f97713697de1a65
-SHA1: afa2d9b7d178cca4a5322db9c2ed0a0d7e253a25
-SHA256: 3a07947dc36b35f5cdb3564af9fe0335505e483a9cfd402d40c043be717c744a
+Filename: pool/main/r/ryoku/ryoku-desktop-hyprland_1.2.3-2_amd64.deb
+Size: 1563644
+MD5sum: f5b6388bc751b59d4ee66d9d6b663136
+SHA1: 5b896f597b1c8ee30a43032380e1a1bafb7fb227
+SHA256: c561384cf80e8033fe59ea237f983b623c14f35633ccac885794a3375cdf355c
 Section: x11
 Priority: optional
 Description: Ryoku Desktop Hyprland compositor integration and configuration
 
 Package: ryoku-palette-bridge
-Version: 1.2.3-1
+Version: 1.2.3-2
 Architecture: amd64
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: ryoku-cli
-Filename: pool/main/r/ryoku/ryoku-palette-bridge_1.2.3-1_amd64.deb
-Size: 2306010
-MD5sum: d51651b4ab2f3ecac88eb095d2c2fb1f
-SHA1: 477d1fc14fa9982d18be51f6a67faa9182320c6c
-SHA256: 07d19e6ff5f3042d285749b67d121e3291ef30d283c5f4aaaee65a1440a12a74
+Filename: pool/main/r/ryoku/ryoku-palette-bridge_1.2.3-2_amd64.deb
+Size: 2306084
+MD5sum: 9aba54540fb7e792e8ef7668b9bec5a0
+SHA1: 94841a3c0b700d189b67fdc0fdea2f74e9620d9e
+SHA256: 465c8bdbc47cb7a47fbc4d331e317e7beab52eaa8cd050a25676803ccb35e56a
 Section: x11
 Priority: optional
 Description: Ryoku Palette Bridge for dynamic wallpaper-derived color sync
 
 Package: ryoku-shell
-Version: 1.2.3-1
+Version: 1.2.3-2
 Architecture: amd64
 Maintainer: Ryoku Debian Maintainers <packaging@ryoku.dev>
 Depends: quickshell, bash
-Filename: pool/main/r/ryoku/ryoku-shell_1.2.3-1_amd64.deb
-Size: 19154454
-MD5sum: a818064a8b3ceb07175561ba0f91e185
-SHA1: 2b28ba7586ae25b2da0214888bddd15e6502e241
-SHA256: f08913097cb440d7bd7cbc1f797fa2e0ad10ce8b3567a34243713679958b8f44
+Filename: pool/main/r/ryoku/ryoku-shell_1.2.3-2_amd64.deb
+Size: 19154728
+MD5sum: ae54cf687abda3dd72f858bf29d33e7f
+SHA1: fa786adfb924741668b1a165053356e199407402
+SHA256: 11c6f809e7dde65c185f38c3c5aa5c789c0960d44f9f7138720c63e0a5ac7571
 Section: x11
 Priority: optional
 Description: Ryoku Desktop Shell IPC and supervision daemon
