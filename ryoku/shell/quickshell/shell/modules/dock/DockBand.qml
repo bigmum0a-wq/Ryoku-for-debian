@@ -58,15 +58,19 @@ Item {
     readonly property color bone: Theme.inverseSurface
     readonly property color inkOnBone: Theme.inverseOnSurface
 
+    signal launchpadToggle()
+
+    readonly property bool appLauncherOnly: Dock.cfg("appLauncherOnly", true)
     // ── the two runs ─────────────────────────────────────────────────────────
     // basePins is the persisted (or starter) order; workOrder is the live order a
     // drag edits before it commits. While dragging, the row follows workOrder.
-    readonly property var basePins: Dock.pinnedOrStarter()
+    readonly property var basePins: band.appLauncherOnly ? [] : Dock.pinnedOrStarter()
     property var workOrder: []
-    readonly property var pins: band.dragging ? band.workOrder : band.basePins
+    readonly property var pins: band.appLauncherOnly ? [] : (band.dragging ? band.workOrder : band.basePins)
     onBasePinsChanged: if (!band.dragging) band.workOrder = band.basePins.slice()
 
     readonly property var running: {
+        if (band.appLauncherOnly) return [];
         const out = [], seen = {};
         const p = band.pins, cs = Dock.clients;
         for (let i = 0; i < cs.length; ++i) {
@@ -75,8 +79,8 @@ Item {
         }
         return out;
     }
-    readonly property bool sepShown: band.pins.length > 0 && band.running.length > 0
-    readonly property bool mediaShown: Dock.cfg("media", false) && Media.present
+    readonly property bool sepShown: !band.appLauncherOnly && band.pins.length > 0 && band.running.length > 0
+    readonly property bool mediaShown: !band.appLauncherOnly && Dock.cfg("media", false) && Media.present
 
     // ── geometry (along the band; cross axis is always baseSize) ──────────────
     function pinStart(i) { return i * band.step; }
@@ -87,6 +91,8 @@ Item {
     readonly property real mediaStart: band.afterRun
     readonly property real mediaLen: band.mediaShown ? (band.horizontal ? mediaChip.implicitWidth : mediaChip.implicitHeight) : 0
     readonly property real totalSpan: {
+        if (band.appLauncherOnly)
+            return band.baseSize;
         let e = 0;
         if (band.pins.length) e = Math.max(e, band.pins.length * band.step - band.gap);
         if (band.sepShown) e = Math.max(e, band.afterPins + band.sepWidth);
@@ -331,6 +337,52 @@ Item {
                 className: rw.className
                 ordinal: band.pins.length + rw.index
             }
+        }
+    }
+
+    // ── single 9-dot App Launcher button (detached from window management) ───
+    Item {
+        id: appDrawerBtn
+        visible: band.appLauncherOnly
+        anchors.centerIn: parent
+        width: band.baseSize
+        height: band.baseSize
+        z: 50
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: band.baseSize - 6
+            height: width
+            radius: Math.round(width / 2)
+            color: drawerMa.containsMouse
+                ? Qt.rgba(Theme.onSurface.r, Theme.onSurface.g, Theme.onSurface.b, 0.14)
+                : "transparent"
+            scale: drawerMa.pressed ? 0.92 : (drawerMa.containsMouse ? 1.08 : 1.0)
+            Behavior on scale { enabled: band.animate; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+
+            Grid {
+                anchors.centerIn: parent
+                columns: 3
+                rows: 3
+                spacing: Math.max(3, Math.round(band.iconSize * 0.16))
+                Repeater {
+                    model: 9
+                    Rectangle {
+                        width: Math.max(4, Math.round(band.iconSize * 0.22))
+                        height: width
+                        radius: width / 2
+                        color: drawerMa.containsMouse ? Theme.primary : Theme.onSurface
+                    }
+                }
+            }
+        }
+
+        MouseArea {
+            id: drawerMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: band.launchpadToggle()
         }
     }
 

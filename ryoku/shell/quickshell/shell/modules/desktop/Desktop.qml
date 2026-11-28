@@ -181,7 +181,7 @@ Scope {
     // Human titles for every framed widget: the built-ins by name, then the
     // hosted rosters' own labels, so a frame never reads "irisClock".
     function widgetTitle(w) {
-        const n = { clock: "Clock", calendar: "Calendar", music: "Music", aio: "All-in-one", stats: "System stats", weather: "Weather", notes: "Notes", dayprogress: "Day Progress", shape: "Shape", visualizer: "Visualizer" };
+        const n = { clock: "Clock", calendar: "Calendar", music: "Music", aio: "All-in-one", stats: "System stats", weather: "Weather", notes: "Notes", winstash: "Window Stash", dayprogress: "Day Progress", shape: "Shape", visualizer: "Visualizer" };
         if (n[w])
             return n[w];
         const iris = IrisRoster.byPrefix(w);
@@ -215,6 +215,7 @@ Scope {
             { id: "stats", label: "System stats", icon: "monitor_heart", enabled: root.widgetValue("stats", "Enabled"), group: "" },
             { id: "weather", label: "Weather", icon: "partly_cloudy_day", enabled: root.widgetValue("weather", "Enabled"), group: "" },
             { id: "notes", label: "Notes", icon: "sticky_note_2", enabled: root.widgetValue("notes", "Enabled"), group: "" },
+            { id: "winstash", label: "Window Stash", icon: "layers", enabled: root.widgetValue("winstash", "Enabled"), group: "" },
             { id: "dayprogress", label: "Day Progress", icon: "donut_large", enabled: root.widgetValue("dayprogress", "Enabled"), group: "" },
             { id: "shape", label: "Shape", icon: "category", enabled: root.widgetValue("shape", "Enabled"), group: "" },
             { id: "visualizer", label: "Visualizer", icon: "graphic_eq", enabled: VizCfg.Config.enabled, group: "" }
@@ -1304,6 +1305,51 @@ Scope {
                     active: notesSlot.visible
                     wLogical: root.widgetValue("notes", "Width")
                     hLogical: root.widgetValue("notes", "Height")
+                }
+            }
+            }
+            }
+        }
+
+        Loader {
+            id: winstashLoader
+            anchors.fill: parent
+            active: root.widgetsEnabled && root.reloadReady && root.widgetValue("winstash", "Enabled")
+            sourceComponent: Component {
+            Item {
+                anchors.fill: parent
+            WidgetSlot {
+                id: winstashSlot
+                widget: "winstash"
+                monitor: root.monitorName
+                depthV: root.widgetDepth("winstash")
+                spatial: root.stageSpatial
+                mouseNX: StageCfg.StageBackend.cursorNXFor(root.screen.name)
+                mouseNY: StageCfg.StageBackend.cursorNYFor(root.screen.name)
+                z: root.widgetZ("winstash")
+                visible: true
+                anchor: root.widgetValue("winstash", "Anchor")
+                freeX: root.widgetValue("winstash", "X")
+                freeY: root.widgetValue("winstash", "Y")
+                locked: root.widgetValue("winstash", "Locked")
+                composing: root.stageComposing
+                stageController: stageSelection
+                gridSize: root.editGridSize
+                snapEnabled: root.editGridSnap
+                bg: "none"
+                scaleCfg: root.widgetValue("winstash", "Scale")
+                onMenuRequested: (x, y, w) => root.openWidgetMenu(w, x, y)
+                onDropped: (box) => { win.flashDrop(box); root.stageRecordGesture(winstashSlot); }
+                onResized: root.stageRecordGesture(winstashSlot)
+                onClicked: winstashBody.toggleExpanded()
+                WinstashWidget {
+                    id: winstashBody
+                    s: root.widgetValue("winstash", "Scale")
+                    active: winstashSlot.visible
+                    slotX: winstashSlot.x
+                    slotY: winstashSlot.y
+                    slotW: winstashSlot.width
+                    slotH: winstashSlot.height
                 }
             }
             }

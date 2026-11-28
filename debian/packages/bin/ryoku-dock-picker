@@ -126,6 +126,8 @@ def main():
     if cmd == "--list":
         list_apps()
         return 0
+    if not os.environ.get("RYOKU_SESSION_KEY"):
+        return 0
     if cmd == "--replace" and len(sys.argv) >= 4:
         replace_app(sys.argv[2], sys.argv[3])
         return 0

@@ -46,9 +46,14 @@ esac
 
 ENABLED="$(read_enabled_state)"
 
+# Master session key guard: never touch compositor/windows outside an active Ryoku session
+[ -n "${RYOKU_SESSION_KEY:-}" ] || exit 0
+
 BAR_SO=""
 for candidate in \
+  "/usr/lib/hyprland/plugins/hyprbars.so" \
   "/usr/lib/ryoku/hyprbars.so" \
+  "${HOME}/.local/lib/hyprland/plugins/hyprbars.so" \
   "${HOME}/.local/lib/ryoku/hyprbars.so"; do
   if [ -f "$candidate" ]; then
     BAR_SO="$candidate"
@@ -122,21 +127,21 @@ if [ "$BAR_ALREADY_SET" = "0" ]; then
       fg_color = \"rgb(4c0002)\",
       size = 13,
       icon = \"×\",
-      action = \"hyprctl dispatch 'hl.dsp.window.close()'\",
+      action = \"${WINSTASH_BIN} close-cursor\",
   })
   hl.plugin.hyprbars.add_button({
       bg_color = \"rgb(febc2e)\",
       fg_color = \"rgb(5c3c00)\",
       size = 13,
       icon = \"−\",
-      action = \"${WINSTASH_BIN} hide\",
+      action = \"${WINSTASH_BIN} hide-cursor\",
   })
   hl.plugin.hyprbars.add_button({
       bg_color = \"rgb(28c840)\",
       fg_color = \"rgb(004d0c)\",
       size = 13,
       icon = \"+\",
-      action = \"${WINSTASH_BIN} maximize\",
+      action = \"${WINSTASH_BIN} maximize-cursor\",
   })
   " >/dev/null 2>&1 || true
 fi

@@ -217,6 +217,18 @@ RYOKU_BUILD_DIR="$HYPR_BUILD" "$REPO_ROOT/release/packages/ryoku-desktop-hyprlan
 RYOKU_BUILD_DIR="$HYPR_BUILD" "$REPO_ROOT/release/packages/ryoku-desktop-hyprland/payload.sh" install "$HYPR_DIR" systemd
 rm -rf "$HYPR_DIR/usr/share/ryoku/config/hypr/CHANGELOG.md" \
        "$HYPR_DIR/usr/share/ryoku/config/hypr/plugins/keysounds"
+# Package compiled hyprbars.so into Ryoku's native pluginDir (/usr/lib/hyprland/plugins)
+for _hb_src in \
+  "${RYOKU_HYPRBARS_SO:-}" \
+  "/usr/lib/hyprland/plugins/hyprbars.so" \
+  "$HOME/.local/lib/hyprland/plugins/hyprbars.so" \
+  "$HOME/.local/lib/ryoku/hyprbars.so"; do
+  if [ -n "$_hb_src" ] && [ -f "$_hb_src" ]; then
+    install -Dm755 "$_hb_src" "$HYPR_DIR/usr/lib/hyprland/plugins/hyprbars.so"
+    log "Packaged native hyprbars.so from $_hb_src"
+    break
+  fi
+done
 package_deb "ryoku-desktop-hyprland" "$ARCH" "hyprland, ryoku-shell" \
   "Ryoku Desktop Hyprland compositor integration and configuration" "$HYPR_DIR"
 
@@ -278,6 +290,15 @@ for candidate in \
     break
   fi
 done
+if [ -z "$MATUGEN_SRC_BIN" ] && command -v curl >/dev/null 2>&1; then
+  MATUGEN_TMP="$WORK_DIR/matugen-dl"
+  mkdir -p "$MATUGEN_TMP"
+  if curl -fsSL --retry 3 -o "$MATUGEN_TMP/matugen.tar.gz" \
+    "https://github.com/InioX/matugen/releases/download/v4.2.0/matugen-4.2.0-x86_64.tar.gz" 2>/dev/null; then
+    tar -xzf "$MATUGEN_TMP/matugen.tar.gz" -C "$MATUGEN_TMP"
+    MATUGEN_SRC_BIN="$(find "$MATUGEN_TMP" -maxdepth 3 -type f -name matugen | head -n1)"
+  fi
+fi
 if [ -n "$MATUGEN_SRC_BIN" ]; then
   MATUGEN_VER="$("$MATUGEN_SRC_BIN" --version 2>/dev/null | awk '{print $2}' | head -n1)"
   MATUGEN_VER="${MATUGEN_VER:-4.2.0}"

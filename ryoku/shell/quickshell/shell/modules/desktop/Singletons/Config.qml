@@ -121,6 +121,15 @@ Singleton {
     property alias notesColor2:   adapter.notesColor2
     property alias notesGradient: adapter.notesGradient
 
+    property alias winstashEnabled: adapter.winstashEnabled
+    property alias winstashScale:   adapter.winstashScale
+    property alias winstashAnchor:  adapter.winstashAnchor
+    property alias winstashX:       adapter.winstashX
+    property alias winstashY:       adapter.winstashY
+    property alias winstashLocked:  adapter.winstashLocked
+    property alias winstashOpacity: adapter.winstashOpacity
+    property alias winstashShape:   adapter.winstashShape
+
     // dayProgress + shape: the two iRiS desktop widgets folded into Ryoku's
     // roster. Both carry the shared must-have contract (enable, placement, size,
     // lock, opacity, colour) plus their own look keys.
@@ -1380,6 +1389,14 @@ Singleton {
             property string notesColor: ""
             property string notesColor2: ""
             property bool notesGradient: false
+            property bool winstashEnabled: true
+            property real winstashScale: 1.0
+            property string winstashAnchor: "bottom-right"
+            property int winstashX: 32
+            property int winstashY: 32
+            property bool winstashLocked: false
+            property real winstashOpacity: 1.0
+            property string winstashShape: "circle"
             property bool dayprogressEnabled: false
             property string dayprogressStyle: "ring"
             property bool dayprogressShowDate: true

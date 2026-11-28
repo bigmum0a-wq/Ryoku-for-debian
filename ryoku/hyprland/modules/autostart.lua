@@ -78,17 +78,13 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("command -v ryoku-session-intro >/dev/null 2>&1 && ryoku-session-intro keys-hint")
     -- GTK CSD buttons are suppressed session-wide via GTK_DECORATION_LAYOUT=: (env.lua).
     -- Qt CSD buttons are suppressed via QT_WAYLAND_DISABLE_WINDOWDECORATION=1.
-    -- Native compositor titlebars (hyprbars): attach − (stash), □ (maximize), ✕ (close) into every window frame.
+    -- Native compositor titlebars (hyprbars): attach Apple traffic-light controls into every window frame.
     hl.exec_cmd("command -v ryoku-hyprbars-init >/dev/null 2>&1 && ryoku-hyprbars-init >/dev/null 2>&1 &")
-    -- macOS-style window stash overlay & eco livewall CPU guard (scoped inside ryoku-session.slice)
-    hl.exec_cmd("(systemd-run --user --scope --slice=ryoku-session.slice --unit=ryoku-winstash-ui flock -n /tmp/ryoku-winstash-ui.lock quickshell -p \"$HOME/.config/quickshell/winstash/shell.qml\" || flock -n /tmp/ryoku-winstash-ui.lock quickshell -p \"$HOME/.config/quickshell/winstash/shell.qml\") >/dev/null 2>&1 &")
-    hl.exec_cmd("(systemd-run --user --scope --slice=ryoku-session.slice --unit=ryoku-livewall-eco flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco || flock -n /tmp/ryoku-livewall-eco.lock ryoku-livewall-eco) >/dev/null 2>&1 &")
-    hl.exec_cmd("command -v ryoku-dock-sync >/dev/null 2>&1 && ryoku-dock-sync >/dev/null 2>&1 &")
 end)
 
 -- hyprbars clears its buttons and resets plugin options on every config reload.
 -- Re-run ryoku-hyprbars-init after every reload so the Apple traffic-light
--- titlebars and hyprbars:no_bar rule survive hyprctl reload / monitor hotplug.
+-- titlebars survive hyprctl reload / monitor hotplug.
 hl.on("config.reloaded", function()
     hl.exec_cmd("command -v ryoku-hyprbars-init >/dev/null 2>&1 && ryoku-hyprbars-init >/dev/null 2>&1 &")
 end)

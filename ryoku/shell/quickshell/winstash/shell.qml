@@ -11,11 +11,14 @@ ShellRoot {
     property bool expanded: false
     property string lastRaw: ""
 
-    // Draggable stack position (margins from right & bottom edges)
-    property real stackRight: 16
-    property real stackBottom: 24
+    // Synced from ~/.config/ryoku/widgets.json (native Ryoku widget store)
+    property string nodeShape: "circle"   // "circle" | "squircle" | "square" | "diamond"
+    property string widgetAnchor: "bottom-right"
+    property real widgetX: 32
+    property real widgetY: 32
 
     readonly property string stateFile: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/ryoku-winstash-open"
+    readonly property string widgetsJsonPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ryoku/widgets.json"
     readonly property string winstashCmd: "BIN=$([ -x \"$HOME/.local/bin/ryoku-winstash\" ] && echo \"$HOME/.local/bin/ryoku-winstash\" || echo ryoku-winstash)"
 
     function resolveAppInfo(appClass) {
@@ -31,9 +34,39 @@ ShellRoot {
     function refresh() {
         if (!listProc.running)
             listProc.running = true;
+        if (!cfgProc.running)
+            cfgProc.running = true;
+    }
+
+    function setNodeShape(shape) {
+        root.nodeShape = shape;
+        var py = "import json, pathlib; p = pathlib.Path('" + root.widgetsJsonPath.replace(/'/g, "\\'") + "'); " +
+                 "d = json.loads(p.read_text()) if p.exists() else {}; " +
+                 "d['winstashShape'] = '" + shape + "'; " +
+                 "p.write_text(json.dumps(d, indent=4) + '\\n')";
+        shapeProc.command = ["python3", "-c", py];
+        shapeProc.running = true;
     }
 
     Timer { interval: 500; running: true; repeat: true; onTriggered: root.refresh() }
+
+    Process {
+        id: cfgProc
+        command: ["cat", root.widgetsJsonPath]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    var d = JSON.parse(this.text || "{}");
+                    if (d.winstashShape) root.nodeShape = String(d.winstashShape);
+                    if (d.winstashAnchor) root.widgetAnchor = String(d.winstashAnchor);
+                    if (typeof d.winstashX === "number") root.widgetX = d.winstashX;
+                    if (typeof d.winstashY === "number") root.widgetY = d.winstashY;
+                } catch (e) {}
+            }
+        }
+    }
+
+    Process { id: shapeProc }
 
     Process {
         id: listProc
@@ -69,139 +102,7 @@ ShellRoot {
         actionProc.running = true;
     }
 
-    // Native window titlebar controls (− □ ✕) are handled directly in-compositor by hyprbars
-    // (loaded via ryoku-hyprbars-init) so they never float outside resized windows.
-
-    // ─── Collapsed: stacked miniature cards (long-press + drag to move anywhere) ───
-    PanelWindow {
-        id: collapsedWin
-        visible: root.stashed.length > 0 && !root.expanded
-        anchors { right: true; bottom: true }
-        margins { right: root.stackRight; bottom: root.stackBottom }
-        color: "transparent"
-        exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.namespace: "ryoku-winstash"
-        // Fixed dimensions: card 90×72 + 3-card fan offset (3×8=24 x, 3×6=18 y) + 14px padding
-        width: 136; height: 110
-
-        property bool dragging: false
-        property bool justDragged: false
-        property real pressX: 0
-        property real pressY: 0
-
-        // Computed top-card info (index 0 = most recently stashed)
-        readonly property var topInfo: root.stashed.length > 0
-            ? root.resolveAppInfo(root.stashed[0]["class"]) : ({ name: "", icon: "" })
-
-        Item {
-            anchors.fill: parent
-
-            // ── Fan of up to 4 ghost cards behind the top card ──────────────
-            Repeater {
-                model: Math.min(4, root.stashed.length)
-                delegate: Rectangle {
-                    required property int index
-                    // rev=0 → topmost (frontmost) card; rev=3 → deepest background
-                    readonly property int rev: Math.min(4, root.stashed.length) - 1 - index
-
-                    // Cards are 90×72, fanned from bottom-left corner with small offsets
-                    width: 90; height: 72
-                    // Anchor fan to bottom-left: main card at (10, 14), background cards shift right+up
-                    x: 10 + rev * 8
-                    y: 14 + rev * 6
-                    rotation: rev === 0 ? 0 : (rev % 2 === 0 ? 2.5 : -2.5)
-                    radius: 12
-                    color: {
-                        if (rev === 0) return collapsedWin.dragging ? "#f0101828" : "#e6101828";
-                        if (rev === 1) return "#cc162238";
-                        if (rev === 2) return "#aa1c2d4a";
-                        return "#771c2d4a";
-                    }
-                    border.width: rev === 0 && collapsedWin.dragging ? 2 : 1
-                    border.color: rev === 0
-                        ? (collapsedWin.dragging ? "#38bdf8" : "#8038bdf8")
-                        : "#3094a3b8"
-
-                    // Only the top card shows content
-                    ColumnLayout {
-                        anchors.fill: parent; anchors.margins: 8
-                        visible: rev === 0; spacing: 4
-
-                        RowLayout {
-                            Layout.fillWidth: true; spacing: 5
-                            Image {
-                                source: collapsedWin.topInfo.icon
-                                width: 16; height: 16
-                                sourceSize.width: 16; sourceSize.height: 16
-                                fillMode: Image.PreserveAspectFit; smooth: true
-                            }
-                            Text {
-                                text: collapsedWin.topInfo.name
-                                color: "#e2e8f0"; font.pixelSize: 10; font.bold: true
-                                elide: Text.ElideRight; Layout.fillWidth: true
-                            }
-                        }
-                        Text {
-                            text: root.stashed.length > 0 ? (root.stashed[0].title || "") : ""
-                            color: "#94a3b8"; font.pixelSize: 8
-                            elide: Text.ElideRight; maximumLineCount: 2
-                            wrapMode: Text.Wrap; Layout.fillWidth: true; Layout.fillHeight: true
-                        }
-                    }
-                }
-            }
-
-            // ── Count badge (circle) — top-right corner of the panel ────────
-            Rectangle {
-                id: countBadge
-                anchors { top: parent.top; right: parent.right; topMargin: 6; rightMargin: 6 }
-                width: 24; height: 24; radius: 12
-                color: "#38bdf8"
-                border.width: 2; border.color: "#0d1b2e"
-                Text {
-                    anchors.centerIn: parent
-                    text: root.stashed.length
-                    color: "#061529"; font.pixelSize: 11; font.bold: true
-                }
-            }
-
-            // ── Drag / click handler ─────────────────────────────────────────
-            MouseArea {
-                anchors.fill: parent
-                pressAndHoldInterval: 300
-                cursorShape: collapsedWin.dragging ? Qt.ClosedHandCursor : Qt.PointingHandCursor
-                z: 10
-
-                onPressed: mouse => {
-                    collapsedWin.pressX = mouse.x;
-                    collapsedWin.pressY = mouse.y;
-                    collapsedWin.justDragged = false;
-                }
-                onPressAndHold: {
-                    collapsedWin.dragging = true;
-                    collapsedWin.justDragged = true;
-                }
-                onPositionChanged: mouse => {
-                    if (!collapsedWin.dragging) return;
-                    var dx = mouse.x - collapsedWin.pressX;
-                    var dy = mouse.y - collapsedWin.pressY;
-                    var scrW = collapsedWin.screen ? collapsedWin.screen.width  : 1280;
-                    var scrH = collapsedWin.screen ? collapsedWin.screen.height : 720;
-                    root.stackRight  = Math.max(0, Math.min(scrW - collapsedWin.width,  root.stackRight  - dx));
-                    root.stackBottom = Math.max(0, Math.min(scrH - collapsedWin.height, root.stackBottom - dy));
-                }
-                onReleased: { collapsedWin.dragging = false; }
-                onClicked: {
-                    if (!collapsedWin.justDragged) root.runAction(["toggle-ui"]);
-                    collapsedWin.justDragged = false;
-                }
-            }
-        }
-    }
-
-    // ─── Expanded: Adaptive Concentric Arc Layout (quarter-circle, 90°) ───────
-    // Adapts its 90° sector inward from wherever the stack is currently positioned.
+    // ─── Expanded: Adaptive Concentric Arc Layout (90° sector from native widget) ───
     PanelWindow {
         id: expandedWin
         visible: root.stashed.length > 0 && root.expanded
@@ -211,18 +112,28 @@ ShellRoot {
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "ryoku-winstash-fan"
 
-        readonly property int cardW:   86
-        readonly property int cardH:   68
-        readonly property int cardGap: 10
-        readonly property int rStart:  Math.max(145, Math.round(Math.min(width, height) * 0.19))
-        readonly property int rStep:   Math.max(120, Math.round(Math.min(width, height) * 0.15))
+        readonly property int cardW:   72
+        readonly property int cardH:   72
+        readonly property int cardGap: 14
+        readonly property int rStart:  Math.max(125, Math.round(Math.min(width, height) * 0.16))
+        readonly property int rStep:   Math.max(100, Math.round(Math.min(width, height) * 0.13))
 
         property real animProgress: 0
         property bool inputReady: false
 
-        // Origin = center of the stack at its current dragged position
-        readonly property real originX: Math.max(cardW / 2, width - root.stackRight - 64)
-        readonly property real originY: Math.max(cardH / 2, height - root.stackBottom - 52)
+        // Origin tracks the native WidgetSlot's anchor / free coordinates
+        readonly property real originX: {
+            if (root.widgetAnchor === "free") return Math.max(40, Math.min(width - 40, root.widgetX + 36));
+            if (root.widgetAnchor.indexOf("left") !== -1) return 64;
+            if (root.widgetAnchor === "top" || root.widgetAnchor === "bottom" || root.widgetAnchor === "center") return width / 2;
+            return width - 64;
+        }
+        readonly property real originY: {
+            if (root.widgetAnchor === "free") return Math.max(40, Math.min(height - 40, root.widgetY + 36));
+            if (root.widgetAnchor.indexOf("top") !== -1) return 72;
+            if (root.widgetAnchor === "left" || root.widgetAnchor === "right" || root.widgetAnchor === "center") return height / 2;
+            return height - 64;
+        }
 
         Timer {
             id: readyTimer
@@ -256,18 +167,36 @@ ShellRoot {
             var gap      = expandedWin.cardGap;
             var r0       = expandedWin.rStart;
             var rS       = expandedWin.rStep;
-            var sector   = Math.PI / 2;
+            var edgeMarginX = expandedWin.width  * 0.22;
+            var edgeMarginY = expandedWin.height * 0.22;
 
-            // Pick 90° quadrant pointing inward toward screen center from (originX, originY)
-            var goLeft = expandedWin.originX >= expandedWin.width / 2;
-            var goUp   = expandedWin.originY >= expandedWin.height / 2;
-            var thetaMin;
-            if (goLeft && goUp)        thetaMin = Math.PI;          // 180° -> 270° (left to up)
-            else if (!goLeft && goUp)  thetaMin = Math.PI * 1.5;    // 270° -> 360° (up to right)
-            else if (!goLeft && !goUp) thetaMin = 0;                // 0°   -> 90°  (right to down)
-            else                       thetaMin = Math.PI * 0.5;    // 90°  -> 180° (down to left)
+            var nearLeft   = expandedWin.originX < edgeMarginX;
+            var nearRight  = expandedWin.originX > expandedWin.width  - edgeMarginX;
+            var nearTop    = expandedWin.originY < edgeMarginY;
+            var nearBottom = expandedWin.originY > expandedWin.height - edgeMarginY;
 
-            var thetaMax = thetaMin + sector;
+            var sector = Math.PI * 2;
+            var thetaMin = -Math.PI / 2;
+            var fullCircle = true;
+
+            if ((nearLeft || nearRight) && (nearTop || nearBottom)) {
+                // Corner: 90° quarter-circle pointing inward
+                fullCircle = false;
+                sector = Math.PI / 2;
+                if (nearRight && nearBottom)      thetaMin = Math.PI;          // 180° -> 270°
+                else if (nearLeft && nearBottom)  thetaMin = Math.PI * 1.5;    // 270° -> 360°
+                else if (nearLeft && nearTop)     thetaMin = 0;                // 0°   -> 90°
+                else                              thetaMin = Math.PI * 0.5;    // 90°  -> 180°
+            } else if (nearLeft || nearRight || nearTop || nearBottom) {
+                // Edge (away from corners): 180° semi-circle pointing inward
+                fullCircle = false;
+                sector = Math.PI;
+                if (nearLeft)        thetaMin = -Math.PI / 2;   // -90° -> +90° (rightward)
+                else if (nearRight)  thetaMin =  Math.PI / 2;   //  90° -> 270° (leftward)
+                else if (nearTop)    thetaMin =  0;             //   0° -> 180° (downward)
+                else                 thetaMin =  Math.PI;       // 180° -> 360° (upward)
+            }
+
             var ring = 0, placed = 0;
 
             while (ring < 20) {
@@ -276,13 +205,15 @@ ShellRoot {
 
                 if (idx < placed + cap) {
                     var posInRing = idx - placed;
-                    var theta = (cap === 1)
-                        ? (thetaMin + thetaMax) / 2
-                        : thetaMin + (posInRing / (cap - 1)) * sector;
-
-                    var baseDeg   = Math.atan2(cH / 2, cW / 2) * 180 / Math.PI;
-                    var targetDeg = Math.atan2(-Math.sin(theta), -Math.cos(theta)) * 180 / Math.PI;
-                    var rotDeg    = targetDeg - baseDeg;
+                    var countInRing = Math.min(cap, total - placed);
+                    var theta;
+                    if (fullCircle) {
+                        theta = thetaMin + (posInRing / countInRing) * sector;
+                    } else {
+                        theta = (countInRing === 1)
+                            ? (thetaMin + sector / 2)
+                            : thetaMin + (posInRing / (countInRing - 1)) * sector;
+                    }
 
                     var rawX = expandedWin.originX + r * Math.cos(theta) - cW / 2;
                     var rawY = expandedWin.originY + r * Math.sin(theta) - cH / 2;
@@ -290,12 +221,12 @@ ShellRoot {
                     rawX = Math.max(20, Math.min(expandedWin.width  - cW - 20, rawX));
                     rawY = Math.max(20, Math.min(expandedWin.height - cH - 20, rawY));
 
-                    return { x: rawX, y: rawY, rot: rotDeg };
+                    return { x: rawX, y: rawY };
                 }
                 placed += cap;
                 ring++;
             }
-            return { x: 60, y: 60, rot: 0 };
+            return { x: 60, y: 60 };
         }
 
         // Click-away backdrop
@@ -309,7 +240,7 @@ ShellRoot {
 
         Repeater {
             model: root.stashed
-            delegate: Rectangle {
+            delegate: Item {
                 id: card
                 required property var modelData
                 required property int index
@@ -321,16 +252,26 @@ ShellRoot {
 
                 width:  expandedWin.cardW
                 height: expandedWin.cardH
-                x:        startX + (layout.x - startX) * expandedWin.animProgress
-                y:        startY + (layout.y - startY) * expandedWin.animProgress
-                rotation: layout.rot * expandedWin.animProgress
-                opacity:  Math.min(1.0, expandedWin.animProgress * 1.6)
+                x:      startX + (layout.x - startX) * expandedWin.animProgress
+                y:      startY + (layout.y - startY) * expandedWin.animProgress
+                opacity: Math.min(1.0, expandedWin.animProgress * 1.6)
                 z: cardMa.containsMouse ? 30 : (10 + index)
 
-                radius: 12
-                color: cardMa.containsMouse ? "#f0132540" : "#ea0d1729"
-                border.width: 1
-                border.color: cardMa.containsMouse ? "#a038bdf8" : "#4038bdf8"
+                // Shape container (circle | squircle | square | diamond)
+                Rectangle {
+                    anchors.fill: parent
+                    rotation: root.nodeShape === "diamond" ? 45 : 0
+                    scale: root.nodeShape === "diamond" ? 0.84 : 1.0
+                    radius: {
+                        if (root.nodeShape === "circle")   return width / 2;
+                        if (root.nodeShape === "squircle") return 18;
+                        if (root.nodeShape === "diamond")  return 10;
+                        return 4; // square
+                    }
+                    color: cardMa.containsMouse ? "#f2132540" : "#ea0d1729"
+                    border.width: cardMa.containsMouse ? 2 : 1.5
+                    border.color: cardMa.containsMouse ? "#38bdf8" : "#5538bdf8"
+                }
 
                 MouseArea {
                     id: cardMa; anchors.fill: parent; hoverEnabled: true
@@ -338,61 +279,103 @@ ShellRoot {
                     onClicked: if (expandedWin.inputReady) root.runAction(["focus", modelData.address])
                 }
 
-                ColumnLayout {
-                    anchors.fill: parent; anchors.margins: 8; spacing: 3
+                Image {
+                    anchors.centerIn: parent
+                    source: card.appInfo.icon
+                    width: 30; height: 30
+                    sourceSize.width: 30; sourceSize.height: 30
+                    fillMode: Image.PreserveAspectFit; smooth: true
+                }
 
-                    RowLayout {
-                        Layout.fillWidth: true; spacing: 5
-                        Image {
-                            source: card.appInfo.icon
-                            width: 14; height: 14
-                            sourceSize.width: 14; sourceSize.height: 14
-                            fillMode: Image.PreserveAspectFit; smooth: true
-                        }
-                        Text {
-                            text: card.appInfo.name
-                            color: "#f1f5f9"; font.pixelSize: 10; font.bold: true
-                            elide: Text.ElideRight; Layout.fillWidth: true
-                        }
-                        Rectangle {
-                            width: 15; height: 15; radius: 4
-                            color: delMa.containsMouse ? "#55fb7185" : "#22fb7185"
-                            Text { anchors.centerIn: parent; text: "✕"; color: "#fda4af"; font.pixelSize: 8 }
-                            MouseArea {
-                                id: delMa; anchors.fill: parent; hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: if (expandedWin.inputReady) root.runAction(["close", modelData.address])
-                            }
-                        }
+                // Circular close badge on top-right rim
+                Rectangle {
+                    anchors { top: parent.top; right: parent.right; topMargin: -2; rightMargin: -2 }
+                    width: 20; height: 20; radius: 10
+                    color: delMa.containsMouse ? "#e6fb7185" : "#cc1e293b"
+                    border.width: 1; border.color: "#80fb7185"
+                    Text { anchors.centerIn: parent; text: "✕"; color: delMa.containsMouse ? "#ffffff" : "#fda4af"; font.pixelSize: 9; font.bold: true }
+                    MouseArea {
+                        id: delMa; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: if (expandedWin.inputReady) root.runAction(["close", modelData.address])
                     }
+                }
 
+                // Label pill below the node
+                Rectangle {
+                    anchors { top: parent.bottom; topMargin: 4; horizontalCenter: parent.horizontalCenter }
+                    width: Math.min(110, lbl.implicitWidth + 12)
+                    height: 18; radius: 9
+                    color: "#d90b1322"
+                    border.width: 1; border.color: cardMa.containsMouse ? "#6038bdf8" : "#2594a3b8"
                     Text {
-                        text: modelData.title || ""
-                        color: "#94a3b8"; font.pixelSize: 8
-                        elide: Text.ElideRight; maximumLineCount: 2; wrapMode: Text.Wrap
-                        Layout.fillWidth: true; Layout.fillHeight: true
+                        id: lbl
+                        anchors.centerIn: parent
+                        width: Math.min(98, implicitWidth)
+                        text: card.appInfo.name
+                        color: "#e2e8f0"; font.pixelSize: 9; font.bold: true
+                        elide: Text.ElideRight
                     }
                 }
             }
         }
 
-        // "Tout ouvrir" pill — offset from stack click spot so a double-click never triggers it
-        Rectangle {
-            anchors { right: parent.right; bottom: parent.bottom; rightMargin: 148; bottomMargin: 24 }
-            width: 96; height: 26; radius: 13
-            color: restoreMa.containsMouse ? "#e616324f" : "#cc0d1b2e"
-            border.width: 1; border.color: "#6038bdf8"
+        // Bottom-right control strip: Shape selector + "Tout ouvrir (N)"
+        Row {
+            anchors { right: parent.right; bottom: parent.bottom; rightMargin: 28; bottomMargin: 24 }
+            spacing: 8
             opacity: expandedWin.animProgress
 
-            Text {
-                anchors.centerIn: parent
-                text: "Tout ouvrir (" + root.stashed.length + ")"
-                color: "#7dd3fc"; font.pixelSize: 9; font.bold: true
+            // Shape switcher: Circle / Squircle / Square / Diamond
+            Rectangle {
+                height: 26; width: shapeRow.implicitWidth + 12; radius: 13
+                color: "#cc0d1b2e"
+                border.width: 1; border.color: "#4038bdf8"
+                Row {
+                    id: shapeRow
+                    anchors.centerIn: parent
+                    spacing: 4
+                    Repeater {
+                        model: [
+                            { id: "circle",   glyph: "●" },
+                            { id: "squircle", glyph: "▢" },
+                            { id: "square",   glyph: "■" },
+                            { id: "diamond",  glyph: "◆" }
+                        ]
+                        delegate: Rectangle {
+                            required property var modelData
+                            width: 20; height: 20; radius: 10
+                            color: root.nodeShape === modelData.id ? "#38bdf8" : (shMa.containsMouse ? "#3038bdf8" : "transparent")
+                            Text {
+                                anchors.centerIn: parent
+                                text: modelData.glyph
+                                color: root.nodeShape === modelData.id ? "#061529" : "#94a3b8"
+                                font.pixelSize: 10; font.bold: true
+                            }
+                            MouseArea {
+                                id: shMa; anchors.fill: parent; hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: if (expandedWin.inputReady) root.setNodeShape(modelData.id)
+                            }
+                        }
+                    }
+                }
             }
-            MouseArea {
-                id: restoreMa; anchors.fill: parent; hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: if (expandedWin.inputReady) root.runAction(["restore-all"])
+
+            Rectangle {
+                width: 102; height: 26; radius: 13
+                color: restoreMa.containsMouse ? "#e616324f" : "#cc0d1b2e"
+                border.width: 1; border.color: "#6038bdf8"
+                Text {
+                    anchors.centerIn: parent
+                    text: "Tout ouvrir (" + root.stashed.length + ")"
+                    color: "#7dd3fc"; font.pixelSize: 9; font.bold: true
+                }
+                MouseArea {
+                    id: restoreMa; anchors.fill: parent; hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: if (expandedWin.inputReady) root.runAction(["restore-all"])
+                }
             }
         }
     }

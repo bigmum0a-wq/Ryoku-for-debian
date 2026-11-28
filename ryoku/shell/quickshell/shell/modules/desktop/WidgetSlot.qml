@@ -50,6 +50,7 @@ Item {
     signal menuRequested(real x, real y, string widget)
     signal dropped(rect box)
     signal resized()
+    signal clicked()
 
     // The placement a gesture (drag, corner resize, Ctrl+wheel scale) started
     // from, captured on press / first wheel. The desktop reads it when the
@@ -535,6 +536,10 @@ Item {
         cursorShape: slot.locked ? Qt.ArrowCursor
             : (slot.dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
 
+        property real _pressX: 0
+        property real _pressY: 0
+        property bool _moved: false
+
         onPressed: mouse => {
             if (mouse.button === Qt.RightButton) {
                 Config.selectMonitor(slot.monitor, false);
@@ -542,14 +547,23 @@ Item {
                 slot.menuRequested(position.x, position.y, slot.widget);
                 return;
             }
+            grip._pressX = mouse.x;
+            grip._pressY = mouse.y;
+            grip._moved = false;
             const point = grip.mapToItem(slot.parent, mouse.x, mouse.y);
             slot.stageBeginMove(point, mouse.modifiers);
         }
         onPositionChanged: mouse => {
+            if (Math.abs(mouse.x - grip._pressX) > 4 || Math.abs(mouse.y - grip._pressY) > 4)
+                grip._moved = true;
             const point = grip.mapToItem(slot.parent, mouse.x, mouse.y);
             slot.stageUpdateMove(point, mouse.modifiers);
         }
-        onReleased: mouse => slot.stageEndMove(mouse.modifiers)
+        onReleased: mouse => {
+            slot.stageEndMove(mouse.modifiers);
+            if (mouse.button === Qt.LeftButton && !grip._moved)
+                slot.clicked();
+        }
         onCanceled: slot.stageCancelMove()
     }
 

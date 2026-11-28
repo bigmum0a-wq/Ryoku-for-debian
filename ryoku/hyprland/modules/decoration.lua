@@ -136,6 +136,14 @@ hl.layer_rule({
   blur         = not no_blur,
   ignore_alpha = 0.05,
 })
+-- Fullscreen macOS Launchpad-style app drawer: blur the desktop behind it,
+-- not the launcher icons themselves.
+hl.layer_rule({
+  name    = "ryoku-launchpad-blur",
+  match   = { namespace = "^ryoku-launchpad$" },
+  blur    = not no_blur,
+  no_anim = true,
+})
 
 
 -- the workspace overview (qs -c overview, Super+Tab) is a full-screen layer-shell

@@ -38,6 +38,7 @@ hl.config({
         -- disappearing for 1-2 minutes on Intel UHD 620 / Aquamarine during
         -- WlSessionLock (qylock) or after DPMS output-off/output-on.
         no_hardware_cursors = 1,
+        no_warps = true,
         hide_on_touch = false,
         hide_on_key_press = false,
     },

@@ -184,6 +184,29 @@ def is_overlay_client(c):
     return cls in ("quickshell", "org.quickshell") or "ryoku-winstash" in title
 
 
+def window_under_cursor():
+    """Return the exact address of the topmost visible window under the pointer."""
+    pos = hypr_json("cursorpos")
+    cx, cy = pos.get("x"), pos.get("y")
+    ws_id = active_ws_id()
+    if cx is not None and cy is not None:
+        clients = hypr_json("clients")
+        ordered = sorted(clients, key=lambda c: c.get("focusHistoryID", 9999))
+        for c in ordered:
+            addr = c.get("address", "")
+            if not addr or not c.get("mapped", True) or is_overlay_client(c):
+                continue
+            if (c.get("workspace") or {}).get("id") != ws_id:
+                continue
+            at = c.get("at") or [0, 0]
+            sz = c.get("size") or [0, 0]
+            x0, y0 = at[0], at[1] - 34  # include hyprbars titlebar height
+            x1, y1 = at[0] + sz[0], at[1] + sz[1]
+            if x0 <= cx <= x1 and y0 <= cy <= y1:
+                return addr
+    return (hypr_json("activewindow") or {}).get("address")
+
+
 def cmd_hide_addr(addr):
     if not addr:
         return 1
@@ -498,8 +521,13 @@ def main():
         print(__doc__)
         return 1
     action = sys.argv[1]
+    # Master session key guard: refuse mutating window/UI actions outside Ryoku session
+    if action not in ("list", "win-list") and not os.environ.get("RYOKU_SESSION_KEY"):
+        return 0
     if action == "hide":
         return cmd_hide()
+    if action == "hide-cursor":
+        return cmd_hide_addr(window_under_cursor())
     if action == "hide-addr" and len(sys.argv) >= 3:
         return cmd_hide_addr(sys.argv[2])
     if action == "list":
@@ -512,8 +540,12 @@ def main():
     if action == "maximize":
         addr = sys.argv[2] if len(sys.argv) >= 3 else (hypr_json("activewindow") or {}).get("address")
         return cmd_maximize(addr)
+    if action == "maximize-cursor":
+        return cmd_maximize(window_under_cursor())
     if action == "close" and len(sys.argv) >= 3:
         return cmd_close(sys.argv[2])
+    if action == "close-cursor":
+        return cmd_close(window_under_cursor())
     if action == "restore-all":
         return cmd_restore_all()
     if action == "toggle-ui":

@@ -113,6 +113,7 @@ Item {
         stats: { label: "System stats", icon: "monitor_heart", gloss: "計測" },
         weather: { label: "Weather", icon: "partly_cloudy_day", gloss: "天気" },
         notes: { label: "Notes", icon: "sticky_note_2", gloss: "筆記" },
+        winstash: { label: "Window Stash", icon: "layers", gloss: "窓" },
         dayprogress: { label: "Day Progress", icon: "donut_large", gloss: "経過" },
         shape: { label: "Shape", icon: "category", gloss: "図形" },
         visualizer: { label: "Visualizer", icon: "graphic_eq", gloss: "音波" }

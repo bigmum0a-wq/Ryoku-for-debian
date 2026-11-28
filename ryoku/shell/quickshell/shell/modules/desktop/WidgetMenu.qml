@@ -107,7 +107,7 @@ Item {
     // Human names for the built-in scopes; the masthead never shows a raw key.
     readonly property var builtinLabels: ({
         clock: "Clock", calendar: "Calendar", music: "Music", aio: "All-in-one",
-        stats: "System stats", weather: "Weather", notes: "Notes",
+        stats: "System stats", weather: "Weather", notes: "Notes", winstash: "Window Stash",
         dayprogress: "Day Progress", shape: "Shape"
     })
 

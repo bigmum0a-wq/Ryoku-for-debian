@@ -136,6 +136,7 @@ PanelWindow {
             edge: dock.edge
             screenName: dock.screenName
             reservedDepth: dock.depth + dock.edgeGap
+            onLaunchpadToggle: launchpad.toggle()
 
             // Centre along the band's own axis; slide along the perpendicular one.
             x: dock.horizontal ? Math.round((parent.width - band.implicitWidth) / 2) : dock.perpPos
@@ -174,5 +175,10 @@ PanelWindow {
             width: Math.round(dock.peekInputRect.width)
             height: Math.round(dock.peekInputRect.height)
         }
+    }
+
+    LaunchpadOverlay {
+        id: launchpad
+        screen: dock.screen
     }
 }
