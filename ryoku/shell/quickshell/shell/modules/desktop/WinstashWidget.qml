@@ -29,9 +29,7 @@ Item {
     function resolveAppInfo(appClass) {
         var cls = (appClass || "").trim();
         if (!cls)
-            return { name: "Stash", icon: Quickshell.iconPath("view-grid-symbolic", "application-x-executable") };
-        var dockIcon = "";
-        try { dockIcon = Dock.iconFor(cls) || ""; } catch (e) {}
+            return { name: "Stash", icon: Quickshell.iconPath("applications-other", "application-x-executable") };
         var low = cls.toLowerCase();
         var base = low.split("-")[0];
         var entry = DesktopEntries.heuristicLookup(cls)
@@ -39,11 +37,17 @@ Item {
             || DesktopEntries.heuristicLookup(low)
             || DesktopEntries.byId(low)
             || (base !== low ? (DesktopEntries.heuristicLookup(base) || DesktopEntries.byId(base)) : null);
-        var iconPath = dockIcon !== "" ? dockIcon
-            : Quickshell.iconPath((entry && entry.icon) ? entry.icon : low, "application-x-executable");
+        // Resolve through the single active Ryoku icon theme (qt6ct / icon-theme) first
+        var iconName = (entry && entry.icon) ? String(entry.icon) : low;
+        if (iconName.startsWith("/"))
+            iconName = iconName.split("/").pop().replace(/\.[^.]+$/, "");
+        var themed = Quickshell.iconPath(iconName, "");
+        if (!themed) {
+            try { themed = Dock.iconFor(cls) || ""; } catch (e) {}
+        }
         return {
             name: (entry && entry.name) ? entry.name : cls,
-            icon: iconPath
+            icon: themed || Quickshell.iconPath("application-x-executable")
         };
     }
 

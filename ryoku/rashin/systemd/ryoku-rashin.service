@@ -18,4 +18,4 @@ NoNewPrivileges=yes
 Slice=ryoku-session.slice
 KillMode=control-group
 [Install]
-WantedBy=default.target
+WantedBy=ryoku-session.target

@@ -35,7 +35,7 @@ PanelWindow {
             searchQuery = "";
             currentPage = 0;
             pad.appRevision++;
-            if (pad.allApps.length === 0 && !xdgScanProc.running)
+            if (!xdgScanProc.running)
                 xdgScanProc.running = true;
             openAnim.restart();
             Qt.callLater(() => searchInput.forceActiveFocus());
@@ -57,12 +57,50 @@ PanelWindow {
         function onObjectRemovedPost() { pad.appRevision++; }
     }
 
-    // Universal Freedesktop XDG .desktop fallback scanner for Linux/Debian
+    // Universal Freedesktop XDG .desktop + Icon Theme resolver (active Ryoku theme first, native app icon second)
     Process {
         id: xdgScanProc
         command: [
             "python3", "-c",
             "import os, json, configparser\n" +
+            "cfg = os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config'))\n" +
+            "tf = os.path.join(cfg, 'ryoku', 'icon-theme')\n" +
+            "active_theme = open(tf).read().strip() if os.path.isfile(tf) else ''\n" +
+            "icon_roots = [os.path.expanduser('~/.local/share/icons'), os.path.expanduser('~/.icons'), '/usr/local/share/icons', '/usr/share/icons', '/var/lib/flatpak/exports/share/icons']\n" +
+            "def build_idx(themes):\n" +
+            "    idx = {}\n" +
+            "    exts = ('.svg', '.png', '.xpm')\n" +
+            "    for t in themes:\n" +
+            "        if not t: continue\n" +
+            "        for r in icon_roots:\n" +
+            "            td = os.path.join(r, t)\n" +
+            "            if not os.path.isdir(td): continue\n" +
+            "            for dp, _, fns in os.walk(td):\n" +
+            "                if '/cursors/' in dp: continue\n" +
+            "                for fn in fns:\n" +
+            "                    if not fn.endswith(exts): continue\n" +
+            "                    stem = os.path.splitext(fn)[0]\n" +
+            "                    if stem not in idx: idx[stem] = os.path.join(dp, fn)\n" +
+            "    return idx\n" +
+            "theme_idx = build_idx([active_theme]) if active_theme else {}\n" +
+            "native_idx = build_idx(['hicolor', 'breeze', 'Papirus'])\n" +
+            "pixmaps = {}\n" +
+            "if os.path.isdir('/usr/share/pixmaps'):\n" +
+            "    for fn in os.listdir('/usr/share/pixmaps'):\n" +
+            "        stem = os.path.splitext(fn)[0]\n" +
+            "        if stem not in pixmaps: pixmaps[stem] = os.path.join('/usr/share/pixmaps', fn)\n" +
+            "def resolve_icon(iv, aid):\n" +
+            "    if iv.startswith('/') and os.path.isfile(iv):\n" +
+            "        base = os.path.splitext(os.path.basename(iv))[0]\n" +
+            "        p = theme_idx.get(base) or iv\n" +
+            "        return 'file://' + p\n" +
+            "    for c in (iv, iv.lower(), aid, aid.lower()):\n" +
+            "        if c and c in theme_idx: return 'file://' + theme_idx[c]\n" +
+            "    for c in (iv, iv.lower(), aid, aid.lower()):\n" +
+            "        if not c: continue\n" +
+            "        if c in native_idx: return 'file://' + native_idx[c]\n" +
+            "        if c in pixmaps: return 'file://' + pixmaps[c]\n" +
+            "    return ''\n" +
             "dirs = [os.path.expanduser('~/.local/share/applications')]\n" +
             "for d in os.environ.get('XDG_DATA_DIRS', '/usr/local/share:/usr/share').split(':'):\n" +
             "    if d: dirs.append(os.path.join(d, 'applications'))\n" +
@@ -86,7 +124,9 @@ PanelWindow {
             "                name = e.get('Name', '').strip()\n" +
             "                exec_cmd = e.get('Exec', '').strip()\n" +
             "                if not name or not exec_cmd: continue\n" +
-            "                out.append({'id': rel[:-8], 'desktopPath': os.path.join(dp, fn), 'name': name, 'icon': e.get('Icon', '').strip(), 'comment': e.get('Comment', '').strip(), 'exec': exec_cmd})\n" +
+            "                aid = rel[:-8]\n" +
+            "                iv = e.get('Icon', '').strip()\n" +
+            "                out.append({'id': aid, 'desktopPath': os.path.join(dp, fn), 'name': name, 'icon': iv, 'resolvedIcon': resolve_icon(iv, aid), 'comment': e.get('Comment', '').strip()})\n" +
             "            except Exception: pass\n" +
             "out.sort(key=lambda x: x['name'].lower())\n" +
             "print(json.dumps(out))\n"
@@ -112,33 +152,33 @@ PanelWindow {
         to: 0.0; duration: 160; easing.type: Easing.InCubic
     }
 
-    // Dynamic installed desktop apps: DesktopEntries first, XDG scanner fallback
+    // Use resolved XDG entries (with verified active-theme / native-app icon paths) first
     readonly property var allApps: {
         void pad.appRevision;
+        if (pad.xdgApps && pad.xdgApps.length > 0)
+            return pad.xdgApps;
         var list = (typeof DesktopEntries !== "undefined" && DesktopEntries.applications && DesktopEntries.applications.values)
             ? DesktopEntries.applications.values : [];
-        if (list && list.length > 0) {
-            var out = [];
-            for (var i = 0; i < list.length; i++) {
-                var app = list[i];
-                if (!app || app.noDisplay) continue;
-                var name = String(app.name || "").trim();
-                if (!name) continue;
-                out.push({
-                    id: String(app.id || ""),
-                    name: name,
-                    icon: String(app.icon || ""),
-                    comment: String(app.comment || ""),
-                    desktopPath: "",
-                    entry: app
-                });
-            }
-            out.sort(function(a, b) {
-                return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+        var out = [];
+        for (var i = 0; i < list.length; i++) {
+            var app = list[i];
+            if (!app || app.noDisplay) continue;
+            var name = String(app.name || "").trim();
+            if (!name) continue;
+            out.push({
+                id: String(app.id || ""),
+                name: name,
+                icon: String(app.icon || ""),
+                resolvedIcon: "",
+                comment: String(app.comment || ""),
+                desktopPath: "",
+                entry: app
             });
-            if (out.length > 0) return out;
         }
-        return pad.xdgApps;
+        out.sort(function(a, b) {
+            return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+        });
+        return out;
     }
 
     readonly property var filteredApps: {
@@ -181,11 +221,12 @@ PanelWindow {
 
     function appIcon(app) {
         if (!app) return Quickshell.iconPath("application-x-executable");
+        if (app.resolvedIcon && String(app.resolvedIcon).length > 0)
+            return String(app.resolvedIcon);
         var iconName = String(app.icon || "").trim();
         if (iconName) {
             if (iconName.startsWith("/")) return "file://" + iconName;
-            var p = Quickshell.iconPath(iconName, "");
-            if (p) return p;
+            return Quickshell.iconPath(iconName, "application-x-executable");
         }
         try {
             var d = Dock.iconFor(String(app.id || ""));
