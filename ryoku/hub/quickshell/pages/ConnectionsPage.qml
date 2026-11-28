@@ -474,10 +474,12 @@ Item {
 
         property bool active: true
 
+        property bool nmWifiEnabled: false
+        property var nmNets: []
         readonly property var devices: (typeof Networking !== "undefined" && Networking && Networking.devices) ? Networking.devices.values : []
         readonly property var wifiDev: devices.find(function(d) { return d && d.type === DeviceType.Wifi }) || null
-        readonly property bool wifiOn: (typeof Networking !== "undefined" && Networking) ? Networking.wifiEnabled : false
-        readonly property var nets: (wifiDev && wifiDev.networks) ? wifiDev.networks.values : []
+        readonly property bool wifiOn: (wifiDev && typeof Networking !== "undefined" && Networking) ? Networking.wifiEnabled : nmWifiEnabled
+        readonly property var nets: (wifiDev && wifiDev.networks) ? wifiDev.networks.values : nmNets
         // saved networks in range lead (the connected one first), then the
         // rest, each by signal; the list heads each group
         function isSaved(n) { return !!n && (n.connected === true || wifi.knownProfiles[n.name] === true); }
@@ -829,7 +831,22 @@ Item {
             scanTimer.stop();
         }
 
-        Component.onCompleted: { wifi.refresh(); backendGetProc.running = true; }
+        Component.onCompleted: { wifi.refresh(); backendGetProc.running = true; radioGetProc.running = true; }
+
+        Process {
+            id: radioGetProc
+            command: ["nmcli", "radio", "wifi"]
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    wifi.nmWifiEnabled = this.text.trim() === "enabled";
+                }
+            }
+        }
+
+        Process {
+            id: radioSetProc
+            onExited: { radioGetProc.running = true; wifi.refresh(); }
+        }
 
         onWifiOnChanged: if (!wifi.wifiOn) wifi.stopScan()
 
@@ -892,6 +909,22 @@ Item {
                         bands[s].sort(function(a, b) { return a.freq - b.freq; });
                     wifi.securityMap = secs;
                     wifi.bandMap = bands;
+                    if (!wifi.wifiDev) {
+                        var bySsid = {};
+                        for (var s2 in bands) {
+                            var entries2 = bands[s2];
+                            var bestSig = 0;
+                            var isAct = false;
+                            for (var k = 0; k < entries2.length; k++) {
+                                if (entries2[k].signal > bestSig) bestSig = entries2[k].signal;
+                                if (entries2[k].active) isAct = true;
+                            }
+                            bySsid[s2] = { name: s2, signalStrength: bestSig / 100.0, connected: isAct };
+                        }
+                        var arr = [];
+                        for (var k2 in bySsid) arr.push(bySsid[k2]);
+                        wifi.nmNets = arr;
+                    }
                 }
             }
         }
@@ -1178,8 +1211,12 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     on: wifi.wifiOn
                     onToggled: (v) => {
-                        if (typeof Networking !== "undefined" && Networking)
+                        if (wifi.wifiDev && typeof Networking !== "undefined" && Networking)
                             Networking.wifiEnabled = v;
+                        else {
+                            radioSetProc.command = ["nmcli", "radio", "wifi", v ? "on" : "off"];
+                            radioSetProc.running = true;
+                        }
                     }
                 }
             }

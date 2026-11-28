@@ -341,7 +341,7 @@ EOF
     # enablement reaches accounts that do not exist when the package is installed.
     local unit
     for unit in ryoku-bootstrap.service ryoku-session.slice ryoku-session.target ryoku-shell.service \
-      ryoku-idle.service ryoku-clamshell.service; do
+      ryoku-idle.service ryoku-clamshell.service ryoku-eq.service ryoku-bt-agent.service ryogami.service; do
       install -Dm644 "$_repo/ryoku/shell/systemd/user/$unit" \
         "$pkgdir/usr/lib/systemd/user/$unit"
     done

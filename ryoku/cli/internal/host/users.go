@@ -34,11 +34,21 @@ type userPermissionSpec struct {
 }
 
 var userPermissionSpecs = []userPermissionSpec{
-	{ID: "admin", Label: "Administrator", Groups: []string{"wheel"}},
+	{ID: "admin", Label: "Administrator", Groups: []string{"wheel", "sudo"}},
 	{ID: "devices", Label: "Devices", Groups: []string{"input", "video"}},
 	{ID: "audio", Label: "Audio", Groups: []string{"audio"}},
 	{ID: "virtualization", Label: "Virtualization", Groups: []string{"kvm", "libvirt"}},
 	{ID: "containers", Label: "Containers", Groups: []string{"docker"}},
+}
+
+func adminGroupEntry(groups map[string]*localGroup) (string, *localGroup) {
+	if g := groups["wheel"]; g != nil {
+		return "wheel", g
+	}
+	if g := groups["sudo"]; g != nil {
+		return "sudo", g
+	}
+	return "", nil
 }
 
 type localUser struct {
@@ -152,9 +162,10 @@ func (a *App) usersList() int {
 	}
 	storageCaps := a.userStorageCapabilities()
 	result := usersList{Self: currentUserName(a, users), Users: make([]listedUser, 0, len(humans))}
+	_, adminGroup := adminGroupEntry(groups)
 	for _, user := range humans {
 		role := "standard"
-		if userInGroup(user, groups["wheel"]) {
+		if userInGroup(user, adminGroup) {
 			role = "admin"
 		}
 		result.Users = append(result.Users, listedUser{
@@ -193,7 +204,7 @@ func (a *App) usersCapability() usersCapability {
 			ID: spec.ID, Label: i18n.T(spec.Label), Groups: available,
 		})
 	}
-	if _, ok := groups["wheel"]; !ok {
+	if _, adminGroup := adminGroupEntry(groups); adminGroup == nil {
 		capability.Reason = i18n.T("The administrator group is unavailable.")
 		capability.Storage = a.userStorageCapabilities()
 		return capability
@@ -225,7 +236,7 @@ func (a *App) usersAdd(args []string) int {
 	if groups[name] != nil {
 		return a.usersFail(i18n.T("That username is reserved by an existing system group."))
 	}
-	if _, ok := groups["wheel"]; !ok && role == "admin" {
+	if _, adminGroup := adminGroupEntry(groups); adminGroup == nil && role == "admin" {
 		return a.usersFail(i18n.T("The administrator group is unavailable."))
 	}
 	requested, err := resolveRequestedPermissions(permissions, groups)
@@ -328,7 +339,7 @@ func (a *App) usersDelete(args []string) int {
 	if currentUserName(a, users) == name {
 		return a.usersFail(i18n.T("You cannot delete your own account."))
 	}
-	if userInGroup(target, groups["wheel"]) && administratorCount(users, groups) <= 1 {
+	if _, adminGroup := adminGroupEntry(groups); userInGroup(target, adminGroup) && administratorCount(users, groups) <= 1 {
 		return a.usersFail(i18n.T("You cannot delete the last Administrator account."))
 	}
 	loggedIn, err := a.loggedInUsers(humanUsers(users))
@@ -422,14 +433,14 @@ func (a *App) usersSetRole(args []string) int {
 	if err != nil {
 		return a.usersFail(err.Error())
 	}
-	wheel := groups["wheel"]
-	if wheel == nil {
+	adminName, adminGroup := adminGroupEntry(groups)
+	if adminGroup == nil {
 		return a.usersFail(i18n.T("The administrator group is unavailable."))
 	}
-	isAdmin := userInGroup(target, wheel)
+	isAdmin := userInGroup(target, adminGroup)
 	if args[1] == "admin" {
 		if !isAdmin {
-			if err := a.usersRun(nil, "usermod", "--append", "--groups", "wheel", target.Name); err != nil {
+			if err := a.usersRun(nil, "usermod", "--append", "--groups", adminName, target.Name); err != nil {
 				return a.usersFail(fmt.Sprintf(i18n.T("Make %s an Administrator: %v"), target.Name, err))
 			}
 		}
@@ -439,7 +450,7 @@ func (a *App) usersSetRole(args []string) int {
 		return a.usersFail(i18n.T("You cannot demote the last Administrator account."))
 	}
 	if isAdmin {
-		if err := a.usersRun(nil, "gpasswd", "--delete", target.Name, "wheel"); err != nil {
+		if err := a.usersRun(nil, "gpasswd", "--delete", target.Name, adminName); err != nil {
 			return a.usersFail(fmt.Sprintf(i18n.T("Make %s a Standard account: %v"), target.Name, err))
 		}
 	}
@@ -462,7 +473,7 @@ func (a *App) usersSetPermissions(args []string) int {
 	if err != nil {
 		return a.usersFail(err.Error())
 	}
-	if userInGroup(target, groups["wheel"]) && !desired["admin"] && administratorCount(users, groups) <= 1 {
+	if _, adminGroup := adminGroupEntry(groups); userInGroup(target, adminGroup) && !desired["admin"] && administratorCount(users, groups) <= 1 {
 		return a.usersFail(i18n.T("You cannot remove Administrator access from the last Administrator account."))
 	}
 	for _, spec := range userPermissionSpecs {
@@ -811,8 +822,9 @@ func userInGroup(user localUser, group *localGroup) bool {
 
 func administratorCount(users []localUser, groups map[string]*localGroup) int {
 	count := 0
+	_, adminGroup := adminGroupEntry(groups)
 	for _, user := range humanUsers(users) {
-		if userInGroup(user, groups["wheel"]) {
+		if userInGroup(user, adminGroup) {
 			count++
 		}
 	}

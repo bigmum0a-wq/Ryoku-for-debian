@@ -133,6 +133,10 @@ Item {
     property bool fsddmPending: false
     property bool fpolkitOn: false
     property bool fpolkitPending: false
+    property bool fhwDetected: false
+    property string fhwName: ""
+    property bool fvaliditySupported: false
+    property bool fdriverInstalling: false
 
     function fpamReload() {
         pg.fpamLoading = true;
@@ -968,6 +972,9 @@ Item {
                 var targets = o.targets || {};
                 pg.fpamModuleOk = o.supported === true;
                 pg.fpamReason = String(o.reason || "");
+                pg.fhwDetected = o.hardwareDetected === true;
+                pg.fhwName = String(o.hardwareName || "");
+                pg.fvaliditySupported = o.validitySupported === true;
                 pg.fsudoOn = targets["sudo"] === true;
                 pg.fsddmOn = targets["sddm"] === true;
                 pg.fpolkitOn = targets["polkit-1"] === true;
@@ -995,6 +1002,23 @@ Item {
             } else {
                 pg.ferr = "";
             }
+            pg.fpamReload();
+        }
+    }
+    Process {
+        id: validityInstallProc
+        command: ["pkexec", "/usr/bin/ryoku-fingerprint-validity-install"]
+        stderr: StdioCollector { id: validityInstallErr }
+        onExited: (code) => {
+            pg.fdriverInstalling = false;
+            if (code !== 0) {
+                pg.ferr = (validityInstallErr.text.trim() !== "")
+                    ? I18n.tr("Driver install failed: %1").arg(validityInstallErr.text.trim())
+                    : I18n.tr("Driver install was cancelled or failed.");
+            } else {
+                pg.ferr = "";
+            }
+            pg.freload();
             pg.fpamReload();
         }
     }
@@ -1279,12 +1303,12 @@ Item {
                         }
                         Column {
                             id: sensorCol
-                            anchors { left: sensorGlyph.right; right: sensorRetry.visible ? sensorRetry.left : parent.right; leftMargin: Tokens.s3; rightMargin: Tokens.s3; verticalCenter: parent.verticalCenter }
+                            anchors { left: sensorGlyph.right; right: sensorActionRow.visible ? sensorActionRow.left : parent.right; leftMargin: Tokens.s3; rightMargin: Tokens.s3; verticalCenter: parent.verticalCenter }
                             spacing: 2
 
                             Text {
                                 width: parent.width
-                                text: !pg.floading ? (pg.fdeviceName || (pg.fready ? I18n.tr("Fingerprint sensor") : I18n.tr("No fingerprint sensor"))) : I18n.tr("Checking\u2026")
+                                text: !pg.floading ? (pg.fdeviceName || (pg.fready ? I18n.tr("Fingerprint sensor") : (pg.fhwDetected ? (pg.fhwName || I18n.tr("Unsupported fingerprint sensor")) : I18n.tr("No fingerprint sensor")))) : I18n.tr("Checking\u2026")
                                 color: pg.fready ? Tokens.ink : Tokens.inkMuted
                                 font.family: Tokens.ui; font.pixelSize: Tokens.fSmall; font.weight: Font.DemiBold
                                 elide: Text.ElideRight
@@ -1294,8 +1318,15 @@ Item {
                                 text: {
                                     if (pg.floading)
                                         return "";
-                                    if (!pg.fdaemon)
+                                    if (pg.fdriverInstalling)
+                                        return I18n.tr("Installing open-fprintd + python-validity driver\u2026");
+                                    if (!pg.fdaemon && !pg.fhwDetected)
                                         return I18n.tr("The fingerprint service is not running. Enroll anyway and it will start on demand.");
+                                    if (!pg.fready && pg.fhwDetected) {
+                                        if (pg.fvaliditySupported)
+                                            return I18n.tr("Your machine has a fingerprint sensor, but your current distribution does not detect it out-of-the-box. Install open-fprintd + python-validity to enable it?");
+                                        return I18n.tr("Your machine has a fingerprint sensor, but your current distribution's libfprint does not support it.");
+                                    }
                                     if (!pg.fready)
                                         return I18n.tr("No sensor found. Check the USB connection, then retry.");
                                     if (pg.ffingers.length === 0)
@@ -1306,12 +1337,29 @@ Item {
                                 font.pixelSize: Tokens.fSmall; wrapMode: Text.WordWrap
                             }
                         }
-                        Btn {
-                            id: sensorRetry
+                        Row {
+                            id: sensorActionRow
                             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                            spacing: Tokens.s2
                             visible: !pg.floading && (!pg.fdaemon || !pg.fready)
-                            text: I18n.tr("RETRY"); compact: true
-                            onAct: pg.freload()
+
+                            Btn {
+                                visible: !pg.fready && pg.fhwDetected && pg.fvaliditySupported
+                                enabled: !pg.fdriverInstalling
+                                text: pg.fdriverInstalling ? I18n.tr("INSTALLING\u2026") : I18n.tr("INSTALL DRIVER")
+                                compact: true
+                                onAct: {
+                                    pg.ferr = "";
+                                    pg.fdriverInstalling = true;
+                                    validityInstallProc.running = true;
+                                }
+                            }
+                            Btn {
+                                id: sensorRetry
+                                visible: !pg.fdriverInstalling
+                                text: I18n.tr("RETRY"); compact: true
+                                onAct: { pg.freload(); pg.fpamReload(); }
+                            }
                         }
                     }
 

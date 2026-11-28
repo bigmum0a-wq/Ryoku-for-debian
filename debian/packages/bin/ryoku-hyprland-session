@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# ryoku-hyprland-session — Universal Wayland session entrypoint for Ryoku (Hyprland).
+# Works across SDDM, GDM3, LightDM, and TTY logins: materializes per-user Ryoku
+# configs if missing, then delegates to ryoku-wayland-session for GPU/DRM handoff,
+# RYOKU_SESSION_KEY, and session environment isolation.
+set -euo pipefail
+
+export PATH="${HOME}/.local/bin:/usr/local/bin:/usr/bin:/bin"
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_CURRENT_DESKTOP="Hyprland"
+export XDG_SESSION_DESKTOP="Hyprland"
+export XDG_SESSION_TYPE="wayland"
+
+# Ensure user configs exist before Hyprland or systemd user units read them
+if [ ! -f "$XDG_CONFIG_HOME/hypr/hyprland.lua" ] || \
+   [ ! -f "$XDG_CONFIG_HOME/quickshell/shell/shell.qml" ] || \
+   [ ! -f "$XDG_CONFIG_HOME/quickshell/hub/shell.qml" ]; then
+  if command -v ryoku >/dev/null 2>&1; then
+    ryoku materialize >/dev/null 2>&1 || true
+  fi
+fi
+
+COMPOSITOR_BIN="/usr/bin/Hyprland"
+if [ -x /usr/bin/start-hyprland ]; then
+  COMPOSITOR_BIN="/usr/bin/start-hyprland"
+fi
+
+SESSION_WRAPPER="/usr/share/ryoku/lockscreen/ryoku-wayland-session"
+if [ -x "$SESSION_WRAPPER" ]; then
+  # Pass direct invocation when running under GDM3/LightDM/TTY so ryoku-wayland-session
+  # does not loop back through SDDM's own wayland-session script.
+  export RYOKU_WAYLAND_SESSION_DEFAULT="/usr/bin/env"
+  exec "$SESSION_WRAPPER" "$COMPOSITOR_BIN"
+fi
+
+exec "$COMPOSITOR_BIN"

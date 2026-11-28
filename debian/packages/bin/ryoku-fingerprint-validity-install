@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# ryoku-fingerprint-validity-install — Opt-in installer for open-fprintd +
+# python-validity on Debian-based systems with unsupported Synaptics/Validity
+# fingerprint readers (e.g. 06cb:009a, 06cb:009d, 06cb:00bd, 06cb:0081).
+# Invoked only on explicit user confirmation from Ryoku Hub -> Lockscreen.
+set -euo pipefail
+
+if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+  exec pkexec "$0" "$@"
+fi
+
+TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y git python3-usb python3-cryptography python3-yaml python3-dbus python3-setuptools innoextract
+
+cd "$TMP_DIR"
+git clone --depth 1 https://github.com/uunicorn/open-fprintd.git
+git clone --depth 1 https://github.com/uunicorn/python-validity.git
+
+systemctl stop fprintd.service 2>/dev/null || true
+systemctl mask fprintd.service
+
+cd "$TMP_DIR/open-fprintd"
+python3 setup.py install --prefix=/usr --install-layout=deb --single-version-externally-managed --root=/
+install -Dm755 dbus_service/open-fprintd /usr/lib/open-fprintd/open-fprintd
+install -Dm755 scripts/suspend.py /usr/lib/open-fprintd/suspend.py
+install -Dm755 scripts/resume.py /usr/lib/open-fprintd/resume.py
+install -Dm644 dbus_service/net.reactivated.Fprint.service /usr/share/dbus-1/system-services/net.reactivated.Fprint.service
+install -Dm644 dbus_service/net.reactivated.Fprint.conf /usr/share/dbus-1/system.d/net.reactivated.Fprint.conf
+install -Dm644 debian/open-fprintd.service /etc/systemd/system/open-fprintd.service
+install -Dm644 debian/open-fprintd-suspend.service /etc/systemd/system/open-fprintd-suspend.service
+install -Dm644 debian/open-fprintd-resume.service /etc/systemd/system/open-fprintd-resume.service
+
+cd "$TMP_DIR/python-validity"
+python3 setup.py install --prefix=/usr --install-layout=deb --single-version-externally-managed --root=/
+install -Dm755 dbus_service/dbus-service /usr/lib/python-validity/dbus-service
+install -Dm644 dbus_service/io.github.uunicorn.Fprint.conf /usr/share/dbus-1/system.d/io.github.uunicorn.Fprint.conf
+install -Dm644 debian/python3-validity.service /etc/systemd/system/python3-validity.service
+install -Dm755 bin/validity-sensors-firmware /usr/bin/validity-sensors-firmware
+install -Dm755 bin/validity-led-dance /usr/bin/validity-led-dance
+
+rm -rf /usr/lib/python3/dist-packages/open_fprintd-*.egg /usr/lib/python3/dist-packages/python_validity-*.egg
+mkdir -p /var/run/python-validity /usr/share/python-validity
+python3 /usr/bin/validity-sensors-firmware
+
+systemctl daemon-reload
+systemctl reload dbus.service 2>/dev/null || true
+systemctl enable open-fprintd-suspend.service open-fprintd-resume.service
+systemctl reset-failed open-fprintd-suspend.service open-fprintd-resume.service 2>/dev/null || true
+systemctl restart open-fprintd.service
+systemctl enable --now python3-validity.service
+systemctl restart python3-validity.service

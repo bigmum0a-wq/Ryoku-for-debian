@@ -5,7 +5,7 @@
 // ryoku-desktop package.
 polkit.addRule(function (action, subject) {
     if (action.id === "org.freedesktop.timedate1.set-timezone" &&
-        subject.active && subject.isInGroup("wheel")) {
+        subject.active && (subject.isInGroup("sudo") || subject.isInGroup("wheel"))) {
         return polkit.Result.YES;
     }
 });

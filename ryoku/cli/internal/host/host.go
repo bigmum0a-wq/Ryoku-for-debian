@@ -274,6 +274,10 @@ func New(cfg Config) *App {
 		cfg.PAMModulePaths = []string{
 			"/usr/lib/security/pam_fprintd_grosshack.so",
 			"/usr/lib64/security/pam_fprintd_grosshack.so",
+			"/usr/lib/x86_64-linux-gnu/security/pam_fprintd.so",
+			"/usr/lib/aarch64-linux-gnu/security/pam_fprintd.so",
+			"/usr/lib/security/pam_fprintd.so",
+			"/lib/x86_64-linux-gnu/security/pam_fprintd.so",
 		}
 	}
 	if cfg.KernelModulesDir == "" {

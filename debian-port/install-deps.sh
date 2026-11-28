@@ -33,6 +33,12 @@ RUNTIME_DEPS=(
   xdg-desktop-portal-hyprland
   wireplumber
   pipewire
+  pipewire-pulse
+  swaybg
+  fish
+  fastfetch
+  brightnessctl
+  ddcutil
   grim
   slurp
   wl-clipboard
@@ -54,6 +60,10 @@ RUNTIME_DEPS=(
   dbus-user-session
   qt6ct
   papirus-icon-theme
+  pamu2fcfg
+  libpam-u2f
+  kdeconnect
+  librsvg2-bin
   curl
   gnupg
 )
